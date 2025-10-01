@@ -6,8 +6,8 @@ export interface SceneCharacter extends ProjectCharacter {
   dialogue: string;
 }
 
-type LoadingState = 'none' | 'video' | 'image';
-export type ActiveTab = 'video' | 'image' | 'imageToVideo';
+type LoadingState = 'none' | 'video';
+export type ActiveTab = 'video' | 'imageToVideo';
 
 const VIDEO_VISUAL_STYLES = [
   {
@@ -21,8 +21,6 @@ const VIDEO_VISUAL_STYLES = [
   }
 ];
 
-const IMAGE_STYLES: Array<'3D Hoạt hình' | 'Hiện thực'> = ['3D Hoạt hình', 'Hiện thực'];
-
 interface PromptInputProps {
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
@@ -32,14 +30,11 @@ interface PromptInputProps {
   onSettingChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   videoStyle: string[];
   onVideoStyleToggle: (style: string) => void;
-  imageStyle: '3D Hoạt hình' | 'Hiện thực';
-  onImageStyleChange: (style: '3D Hoạt hình' | 'Hiện thực') => void;
   projectCharacters: ProjectCharacter[];
   sceneCharacters: SceneCharacter[];
   onSceneCharactersChange: React.Dispatch<React.SetStateAction<SceneCharacter[]>>;
   onManageCharactersClick: () => void;
   onGenerateVideo: () => void;
-  onGenerateImage: () => void;
   onGenerateVideoFromImage: () => void;
   loadingState: LoadingState;
   uploadedImage: { mimeType: string; data: string } | null;
@@ -147,14 +142,13 @@ const CharacterSelector: React.FC<{
 
 export const PromptInput: React.FC<PromptInputProps> = (props) => {
   const { activeTab, onTabChange, mainIdea, onMainIdeaChange, setting, onSettingChange, 
-          videoStyle, onVideoStyleToggle, imageStyle, onImageStyleChange,
+          videoStyle, onVideoStyleToggle,
           projectCharacters, sceneCharacters, onSceneCharactersChange, onManageCharactersClick,
-          onGenerateVideo, onGenerateImage, onGenerateVideoFromImage, loadingState,
-          uploadedImage, onUploadedImageChange, apiKey } = props;
+          apiKey, onGenerateVideo, onGenerateVideoFromImage, loadingState,
+          uploadedImage, onUploadedImageChange } = props;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isLoading = loadingState !== 'none';
-  const hasApiKey = !!apiKey;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -206,47 +200,11 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
       <CharacterSelector {...props} isForVideo={true} label="4. Nhân vật & Lời thoại" />
       {/* Submit Button */}
       <div className="pt-4">
-        <button onClick={onGenerateVideo} disabled={isLoading || !mainIdea.trim() || !hasApiKey} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-lg hover:bg-purple-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-transform transform hover:scale-105 disabled:transform-none">
+        <button onClick={onGenerateVideo} disabled={isLoading || !mainIdea.trim() || !apiKey} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-lg hover:bg-purple-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-transform transform hover:scale-105 disabled:transform-none">
           {loadingState === 'video' ? <><LoadingSpinnerIcon className="w-5 h-5 animate-spin" />Đang tạo...</> : 
-            !hasApiKey ? 'Vui lòng cấu hình API Key' :
             <><FilmIcon className="w-5 h-5" />Tạo Prompt Video</>}
         </button>
-      </div>
-    </div>
-  );
-
-  const renderImageForm = () => (
-    <div className="space-y-4">
-      {/* 1. Main Idea (Textarea) */}
-      <div>
-        <label htmlFor="image-idea" className="block text-sm font-medium text-gray-300 mb-1">1. Mô tả ảnh (*)</label>
-        <textarea id="image-idea" value={mainIdea} onChange={onMainIdeaChange} placeholder="Mô tả chi tiết về nội dung, hành động, cảm xúc trong ảnh..." rows={4} className="w-full p-2 bg-gray-900/50 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500 resize-none" disabled={isLoading}/>
-      </div>
-      {/* 2. Setting */}
-      <div>
-        <label htmlFor="image-setting" className="block text-sm font-medium text-gray-300 mb-1">2. Bối cảnh</label>
-        <input id="image-setting" type="text" value={setting} onChange={onSettingChange} placeholder="ví dụ: khu rừng huyền ảo, thành phố tương lai..." className="w-full p-2 bg-gray-900/50 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500" disabled={isLoading}/>
-      </div>
-      {/* 3. Characters */}
-      <CharacterSelector {...props} isForVideo={false} label="3. Nhân vật có trong ảnh"/>
-      {/* 4. Image Style */}
-      <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">4. Phong cách ảnh</label>
-        <div className="flex gap-2 p-1 bg-gray-900/50 rounded-lg">
-          {IMAGE_STYLES.map(style => (
-            <button key={style} onClick={() => onImageStyleChange(style)} disabled={isLoading} className={`w-full text-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${imageStyle === style ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
-              {style}
-            </button>
-          ))}
-        </div>
-      </div>
-      {/* Submit Button */}
-      <div className="pt-4">
-        <button onClick={onGenerateImage} disabled={isLoading || !mainIdea.trim() || !hasApiKey} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:bg-indigo-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-transform transform hover:scale-105 disabled:transform-none">
-          {loadingState === 'image' ? <><LoadingSpinnerIcon className="w-5 h-5 animate-spin" />Đang tạo...</> : 
-            !hasApiKey ? 'Vui lòng cấu hình API Key' :
-            <><ImageIcon className="w-5 h-5" />Tạo ảnh</>}
-        </button>
+        {!apiKey && <p className="text-xs text-center text-yellow-500 mt-2">Vui lòng cung cấp API Key để sử dụng chức năng này.</p>}
       </div>
     </div>
   );
@@ -296,15 +254,15 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
         {/* 2. Main Idea */}
         <div>
             <label htmlFor="image-to-video-idea" className="block text-sm font-medium text-gray-300 mb-1">2. Ý tưởng bổ sung (tùy chọn)</label>
-            <textarea id="image-to-video-idea" value={mainIdea} onChange={onMainIdeaChange} placeholder="ví dụ: làm cho nhân vật trong ảnh bắt đầu di chuyển và nói chuyện..." rows={3} className="w-full p-2 bg-gray-900/50 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500 resize-none" disabled={isLoading}/>
+            <textarea id="image-to-video-idea" value={mainIdea} onChange={onMainIdeaChange} placeholder={`Gợi ý: 'làm cho nhân vật di chuyển', 'thêm hiệu ứng tuyết rơi', hoặc thêm lời thoại tiếng Việt như: Người đàn ông nói: "Chúng ta đi thôi."`} rows={3} className="w-full p-2 bg-gray-900/50 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500 resize-none" disabled={isLoading}/>
         </div>
         {/* Submit Button */}
         <div className="pt-4">
-            <button onClick={onGenerateVideoFromImage} disabled={isLoading || !uploadedImage || !hasApiKey} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-lg hover:bg-purple-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-transform transform hover:scale-105 disabled:transform-none">
+            <button onClick={onGenerateVideoFromImage} disabled={isLoading || !uploadedImage || !apiKey} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-lg hover:bg-purple-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-transform transform hover:scale-105 disabled:transform-none">
                 {loadingState === 'video' ? <><LoadingSpinnerIcon className="w-5 h-5 animate-spin" />Đang tạo...</> : 
-                  !hasApiKey ? 'Vui lòng cấu hình API Key' :
                   <><FilmIcon className="w-5 h-5" />Tạo Prompt Video</>}
             </button>
+            {!apiKey && <p className="text-xs text-center text-yellow-500 mt-2">Vui lòng cung cấp API Key để sử dụng chức năng này.</p>}
         </div>
     </div>
 );
@@ -319,13 +277,9 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
         <TabButton onClick={() => onTabChange('imageToVideo')} isActive={activeTab === 'imageToVideo'} icon={<UploadIcon className="w-5 h-5"/>}>
           Tạo từ ảnh
         </TabButton>
-        <TabButton onClick={() => onTabChange('image')} isActive={activeTab === 'image'} icon={<ImageIcon className="w-5 h-5"/>}>
-          Tạo ảnh
-        </TabButton>
       </div>
       <div className="p-6 sm:p-8">
         {activeTab === 'video' && renderVideoForm()}
-        {activeTab === 'image' && renderImageForm()}
         {activeTab === 'imageToVideo' && renderImageToVideoForm()}
       </div>
     </>

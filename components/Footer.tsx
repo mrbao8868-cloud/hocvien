@@ -1,10 +1,10 @@
 import React from 'react';
 
 interface FooterProps {
-    onApiKeyChangeClick: () => void;
+  onOpenApiKeyModal: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onApiKeyChangeClick }) => {
+export const Footer: React.FC<FooterProps> = ({ onOpenApiKeyModal }) => {
     return (
         <footer className="w-full text-center p-4 z-10">
             <p className="text-sm text-gray-500 mb-1">
@@ -14,11 +14,9 @@ export const Footer: React.FC<FooterProps> = ({ onApiKeyChangeClick }) => {
                  <p className="text-sm text-gray-500">
                     Powered by Google Gemini API.
                 </p>
-                <button 
-                    onClick={onApiKeyChangeClick} 
-                    className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold hover:underline"
-                >
-                    Đổi API Key
+                <span className="text-gray-600">|</span>
+                <button onClick={onOpenApiKeyModal} className="text-sm text-gray-500 hover:text-indigo-400 transition-colors">
+                    Cấu hình API Key
                 </button>
             </div>
         </footer>

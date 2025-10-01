@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardIcon, CheckIcon } from './icons';
 
-type LoadingState = 'none' | 'video' | 'image';
+type LoadingState = 'none' | 'video';
 
 interface PromptOutputProps {
   prompt: string;
-  images: string[];
   loadingState: LoadingState;
 }
 
-export const PromptOutput: React.FC<PromptOutputProps> = ({ prompt, images, loadingState }) => {
+export const PromptOutput: React.FC<PromptOutputProps> = ({ prompt, loadingState }) => {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -26,39 +25,18 @@ export const PromptOutput: React.FC<PromptOutputProps> = ({ prompt, images, load
     }
   };
   
-  const hasContent = prompt || images.length > 0;
+  const hasContent = prompt;
   if (loadingState === 'none' && !hasContent) {
     return null;
   }
 
   return (
     <div className="mt-8 space-y-6">
-      {/* Image Output */}
-      {loadingState === 'image' || images.length > 0 ? (
-        <div>
-          <h3 className="text-sm font-medium text-gray-300 mb-2">Ảnh đã tạo:</h3>
-          <div className="grid grid-cols-1 gap-4">
-            {loadingState === 'image' && images.length === 0 ? (
-              <div className="w-full aspect-video bg-gray-700 rounded-lg animate-pulse"></div>
-            ) : (
-              images.map((imgData, index) => (
-                <img
-                  key={index}
-                  src={`data:image/jpeg;base64,${imgData}`}
-                  alt={`Generated image ${index + 1}`}
-                  className="w-full h-auto rounded-lg border border-gray-700"
-                />
-              ))
-            )}
-          </div>
-        </div>
-      ) : null}
-
       {/* Prompt Output */}
       {loadingState !== 'none' || prompt ? (
         <div>
           <h3 className="text-sm font-medium text-gray-300 mb-2">
-            {loadingState === 'image' || images.length > 0 ? 'Prompt đã dùng để tạo ảnh:' : 'Prompt video đã tạo:'}
+            Prompt video đã tạo:
           </h3>
           <div className="relative w-full min-h-[120px] p-4 bg-gray-900/70 border border-gray-700 rounded-lg text-gray-300 font-mono text-sm whitespace-pre-wrap transition-opacity duration-500">
             {loadingState !== 'none' && !prompt && (

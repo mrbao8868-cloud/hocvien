@@ -1,30 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
 
 let ai: GoogleGenAI | null = null;
+let currentApiKey: string | null = null;
 
-/**
- * Initializes or re-initializes the Gemini AI client with a new API key.
- * This must be called before any other service function.
- * @param apiKey The Google Gemini API key.
- */
-export function initializeGemini(apiKey: string) {
-  if (apiKey && apiKey.trim()) {
-    ai = new GoogleGenAI({ apiKey });
-  } else {
-    ai = null; // Invalidate the client if the key is empty
+// Initialize or reuse a cached Gemini AI client instance.
+function initializeGemini(apiKey: string): GoogleGenAI {
+  if (ai && currentApiKey === apiKey) {
+    return ai;
   }
-}
-
-/**
- * Gets the initialized AI instance, throwing an error if it's not available.
- * @returns The initialized GoogleGenAI instance.
- */
-function getAiInstance(): GoogleGenAI {
-  if (!ai) {
-    throw new Error("API Key is not configured. Please set your API key in the application.");
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please provide a valid API key.");
   }
+  ai = new GoogleGenAI({ apiKey });
+  currentApiKey = apiKey;
   return ai;
 }
+
 
 // Interfaces for character data structure
 interface ProjectCharacter {
@@ -47,16 +38,11 @@ interface VeoTextInput extends BaseTextInput {
     style: string[];
 }
 
-interface ImageTextInput extends BaseTextInput {
-    style: '3D Hoạt hình' | 'Hiện thực';
-}
-
-
 // Helper function to handle API call and error
-async function callGemini(contents: any, systemInstruction: string): Promise<string> {
-  const gemini = getAiInstance();
+async function callGemini(contents: any, systemInstruction: string, apiKey: string): Promise<string> {
   try {
-    const response = await gemini.models.generateContent({
+    const ai = initializeGemini(apiKey);
+    const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents,
       config: {
@@ -71,12 +57,6 @@ async function callGemini(contents: any, systemInstruction: string): Promise<str
   }
 }
 
-const getCharactersString = (characters: SceneCharacter[]): string => {
-    return characters.length > 0
-        ? characters.map(char => `${char.name} (${char.description || 'No description'})`).join(', ')
-        : 'Not specified';
-};
-
 const getCharactersAndDialogueString = (characters: SceneCharacter[]): string => {
     return characters.length > 0
         ? characters.map(char => {
@@ -90,7 +70,7 @@ const getCharactersAndDialogueString = (characters: SceneCharacter[]): string =>
 };
 
 
-export async function generateVeoPromptFromText(input: VeoTextInput): Promise<string> {
+export async function generateVeoPromptFromText(input: VeoTextInput, apiKey: string): Promise<string> {
   const systemInstruction = `Bạn là một chuyên gia sáng tạo prompt cho các mô hình AI tạo video như Google Veo. Nhiệm vụ của bạn là chuyển đổi thông tin do người dùng cung cấp thành một prompt video duy nhất, chi tiết, đậm chất điện ảnh bằng tiếng Anh.
 
 **YÊU CẦU QUAN TRỌNG:**
@@ -122,74 +102,21 @@ The two exchange a warm, supportive glance. In the background, a wall clock tick
 - Characters and Dialogue: "${charactersAndDialogueString}"
 `;
 
-  return callGemini(contents, systemInstruction);
+  return callGemini(contents, systemInstruction, apiKey);
 }
-
-
-export async function generateImageFromText(input: ImageTextInput): Promise<{ prompt: string; images: string[] }> {
-    const gemini = getAiInstance();
-
-    // Step 1: Generate a high-quality English prompt using the text model
-    const systemInstructionForPromptGeneration = `You are an expert prompt creator for AI image generation models like Imagen. Your task is to convert user-provided information in Vietnamese into a single, detailed, and descriptive image prompt in English.
-
-**REQUIREMENTS:**
-1.  **Language:** The entire output prompt must be in **English**.
-2.  **Detail:** Don't just list the information. Weave it into a cohesive scene description. Add rich details about the subject, environment, lighting, atmosphere, and character expressions to create a vivid picture.
-3.  **Format:** Return only a single, coherent paragraph. DO NOT use markdown.
-
-**EXAMPLE:**
-Based on "cô gái ngồi bên cửa sổ, trời mưa", the output prompt should be something like this:
----
-A melancholic young Vietnamese woman with long dark hair sits by a large window, raindrops streaming down the glass. The room is dimly lit, with a soft, cool light filtering through the rainy window, casting gentle reflections on her thoughtful face. She gazes out at the gray, wet world, a cup of steaming tea held in her hands. The atmosphere is quiet, contemplative, and slightly nostalgic. Photorealistic, cinematic lighting, 8K.
----`;
-
-    const charactersString = getCharactersString(input.characters);
-    const styleDescription = input.style === '3D Hoạt hình'
-        ? '3D animation, Pixar style, charming, detailed, high resolution'
-        : 'photorealistic, cinematic, 8K, high detail, professional photography';
-
-    const contentsForPromptGeneration = `Please generate a rich, detailed, and single-paragraph English image prompt based on the following details:
-- Main Idea: "${input.mainIdea}"
-- Setting: "${input.setting || 'An interesting and fitting location'}"
-- Characters: "${charactersString}"
-- Desired Visual Style: "${styleDescription}"
-`;
-    // Use the helper to call the text model and get an English prompt
-    const englishPrompt = await callGemini(contentsForPromptGeneration, systemInstructionForPromptGeneration);
-
-    // Step 2: Use the generated English prompt to generate the image
-    try {
-        const response = await gemini.models.generateImages({
-            model: 'imagen-4.0-generate-001',
-            prompt: englishPrompt, // Use the translated and enriched English prompt
-            config: {
-                numberOfImages: 1,
-                outputMimeType: 'image/jpeg',
-                aspectRatio: '16:9',
-            },
-        });
-
-        const images = response.generatedImages.map(img => img.image.imageBytes);
-
-        // Return the English prompt that was actually used, for user transparency
-        return { prompt: englishPrompt, images };
-
-    } catch (error) {
-        console.error("Imagen API call failed:", error);
-        throw error;
-    }
-}
-
 
 export async function generateVeoPromptFromImage(
   idea: string,
-  image: { mimeType: string; data: string }
+  image: { mimeType: string; data: string },
+  apiKey: string
 ): Promise<string> {
-  const systemInstruction = `Bạn là một chuyên gia sáng tạo prompt cho các mô hình AI tạo video như Google Veo. Nhiệm vụ của bạn là phân tích một hình ảnh và một ý tưởng tùy chọn từ người dùng để tạo ra một prompt video chi tiết, sống động. Prompt cuối cùng phải là một đoạn văn duy nhất, mạch lạc, bằng tiếng Anh.
+  const systemInstruction = `Bạn là một chuyên gia sáng tạo prompt cho các mô hình AI tạo video như Google Veo. Nhiệm vụ của bạn là phân tích một hình ảnh và một ý tưởng tùy chọn từ người dùng để tạo ra một prompt video chi tiết, sống động.
 
-1.  **Phân tích hình ảnh:** Xác định chủ thể chính, bối cảnh, phong cách nghệ thuật, ánh sáng và bố cục của hình ảnh.
-2.  **Kết hợp ý tưởng:** Nếu người dùng cung cấp ý tưởng, hãy tích hợp nó một cách sáng tạo vào prompt. Ví dụ: nếu hình ảnh là một khu rừng và ý tưởng là "thêm một con rồng", hãy mô tả con rồng trong khu rừng đó. Nếu không có ý tưởng, hãy tạo một hành động hoặc câu chuyện dựa trên hình ảnh.
-3.  **Xây dựng Prompt:** Tạo một prompt hoàn chỉnh, kết hợp các yếu tố như:
+**YÊU CẦU QUAN TRỌNG:**
+1.  **Ngôn ngữ:** Toàn bộ prompt mô tả cảnh, hành động, và máy quay phải bằng **tiếng Anh**. Tuy nhiên, nếu ý tưởng bổ sung của người dùng có chứa **lời thoại** (thường trong dấu ngoặc kép), bạn PHẢI giữ nguyên lời thoại đó bằng **tiếng Việt** và lồng ghép nó một cách tự nhiên vào trong prompt.
+2.  **Phân tích hình ảnh:** Xác định chủ thể chính, bối cảnh, phong cách nghệ thuật, ánh sáng và bố cục của hình ảnh.
+3.  **Kết hợp ý tưởng:** Tích hợp ý tưởng bổ sung một cách sáng tạo vào prompt. Ví dụ: nếu hình ảnh là một khu rừng và ý tưởng là "thêm một con rồng", hãy mô tả con rồng trong khu rừng đó. Nếu không có ý tưởng, hãy tạo một hành động hoặc câu chuyện dựa trên hình ảnh.
+4.  **Xây dựng Prompt:** Tạo một prompt hoàn chỉnh, kết hợp các yếu tố như:
     - **Chủ thể & Hành động:** Mô tả chi tiết chủ thể từ ảnh và hành động được đề xuất.
     - **Môi trường:** Dựa trên bối cảnh của ảnh.
     - **Phong cách hình ảnh:** Dựa trên phong cách của ảnh, nhưng có thể nhấn mạnh thêm (ví dụ: "cinematic, photorealistic, 8K").
@@ -210,5 +137,5 @@ KHÔNG sử dụng markdown. Chỉ trả về một đoạn văn tiếng Anh duy
 
   const contents = { parts: [imagePart, textPart] };
 
-  return callGemini(contents, systemInstruction);
+  return callGemini(contents, systemInstruction, apiKey);
 }

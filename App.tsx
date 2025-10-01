@@ -2,48 +2,67 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { PromptInput, SceneCharacter, ActiveTab } from './components/PromptInput';
 import { PromptOutput } from './components/PromptOutput';
-import { generateVeoPromptFromText, generateImageFromText, generateVeoPromptFromImage, initializeGemini } from './services/geminiService';
+import { generateVeoPromptFromText, generateVeoPromptFromImage } from './services/geminiService';
 import { ErrorDisplay } from './components/ErrorDisplay';
 import { Footer } from './components/Footer';
 import { CharacterManager, ProjectCharacter } from './components/CharacterManager';
 import { ApiKeyModal } from './components/ApiKeyModal';
 
-type LoadingState = 'none' | 'video' | 'image';
+type LoadingState = 'none' | 'video';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('video');
   const [apiKey, setApiKey] = useState<string>('');
-  const [isApiModalOpen, setIsApiModalOpen] = useState(false);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('video');
   
   // Unified state for all inputs. Persists when switching tabs.
   const [mainIdea, setMainIdea] = useState<string>('');
   const [setting, setSetting] = useState<string>('');
   const [videoStyle, setVideoStyle] = useState<string[]>(['Hoạt hình']);
-  const [imageStyle, setImageStyle] = useState<'3D Hoạt hình' | 'Hiện thực'>('3D Hoạt hình');
   const [sceneCharacters, setSceneCharacters] = useState<SceneCharacter[]>([]);
   const [uploadedImage, setUploadedImage] = useState<{ mimeType: string; data: string } | null>(null);
 
 
   const [generatedPrompt, setGeneratedPrompt] = useState<string>('');
-  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingState>('none');
   const [error, setError] = useState<string | null>(null);
 
   // Character Library State
   const [projectCharacters, setProjectCharacters] = useState<ProjectCharacter[]>([]);
   const [isCharacterManagerOpen, setIsCharacterManagerOpen] = useState(false);
-
-  // Load API key and characters from localStorage on initial render
+  
+  // Load API key from localStorage on initial render
   useEffect(() => {
     try {
-      const storedKey = localStorage.getItem('gemini-api-key');
-      if (storedKey) {
-        setApiKey(storedKey);
-        initializeGemini(storedKey);
+      const storedApiKey = localStorage.getItem('gemini-api-key');
+      if (storedApiKey) {
+        setApiKey(storedApiKey);
       } else {
-        setIsApiModalOpen(true); // Open modal if no key is found
+        setIsApiKeyModalOpen(true); // Open modal if no key is found
       }
+    } catch (e) {
+      console.error("Could not load API key from localStorage", e);
+      setIsApiKeyModalOpen(true); // Open modal on error
+    }
+  }, []);
 
+  // Save API key to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      if (apiKey) {
+        localStorage.setItem('gemini-api-key', apiKey);
+      } else {
+        // If the key is empty, remove it
+        localStorage.removeItem('gemini-api-key');
+      }
+    } catch (e) {
+      console.error("Could not save API key to localStorage", e);
+    }
+  }, [apiKey]);
+
+  // Load characters from localStorage on initial render
+  useEffect(() => {
+    try {
       const storedCharacters = localStorage.getItem('veo-project-characters');
       if (storedCharacters) {
         setProjectCharacters(JSON.parse(storedCharacters));
@@ -62,25 +81,16 @@ const App: React.FC = () => {
     }
   }, [projectCharacters]);
 
-  const handleSaveApiKey = (newKey: string) => {
-    const trimmedKey = newKey.trim();
-    if (trimmedKey) {
-        setApiKey(trimmedKey);
-        localStorage.setItem('gemini-api-key', trimmedKey);
-        initializeGemini(trimmedKey);
-        setIsApiModalOpen(false);
-        setError(null); // Clear any previous API key errors
-    }
-  };
-
   const handleApiError = (err: any) => {
     console.error(err);
-    // A simple check for common API key-related errors
-    if (err instanceof Error && (err.message.includes('API Key') || err.message.includes('400'))) {
-        setError('API Key không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại.');
-        setIsApiModalOpen(true);
+    const message = (err.message || '').toString();
+    if (message.includes('API key not valid')) {
+        setError('API Key không hợp lệ. Vui lòng kiểm tra lại.');
+        setIsApiKeyModalOpen(true);
+    } else if (message.includes('quota')) {
+        setError('Đã vượt quá hạn ngạch API. Vui lòng thử lại sau hoặc kiểm tra tài khoản Google của bạn.');
     } else {
-        setError('Đã xảy ra lỗi. Vui lòng thử lại.');
+        setError('Đã xảy ra lỗi khi gọi API. Vui lòng kiểm tra lại hoặc xem console để biết chi tiết.');
     }
   }
 
@@ -98,11 +108,10 @@ const App: React.FC = () => {
     setLoadingState('video');
     setError(null);
     setGeneratedPrompt('');
-    setGeneratedImages([]);
 
     try {
       const textInput = { mainIdea, setting, style: videoStyle, characters: sceneCharacters };
-      const prompt = await generateVeoPromptFromText(textInput);
+      const prompt = await generateVeoPromptFromText(textInput, apiKey);
       setGeneratedPrompt(prompt);
     } catch (err) {
       handleApiError(err);
@@ -111,44 +120,28 @@ const App: React.FC = () => {
     }
   }, [mainIdea, setting, videoStyle, sceneCharacters, loadingState, apiKey]);
 
-  const handleGenerateImage = useCallback(async () => {
-    if (loadingState !== 'none' || !mainIdea.trim() || !apiKey) return;
-
-    setLoadingState('image');
-    setError(null);
-    setGeneratedPrompt('');
-    setGeneratedImages([]);
-
-    try {
-        const imageInput = { mainIdea, setting, style: imageStyle, characters: sceneCharacters };
-        const { prompt, images } = await generateImageFromText(imageInput);
-        setGeneratedPrompt(prompt);
-        setGeneratedImages(images);
-    } catch (err) {
-        handleApiError(err);
-    } finally {
-        setLoadingState('none');
-    }
-  }, [mainIdea, setting, imageStyle, sceneCharacters, loadingState, apiKey]);
-
   const handleGenerateVideoPromptFromImage = useCallback(async () => {
     if (loadingState !== 'none' || !uploadedImage || !apiKey) return;
 
     setLoadingState('video'); // It generates a video prompt
     setError(null);
     setGeneratedPrompt('');
-    setGeneratedImages([]);
 
     try {
-      const prompt = await generateVeoPromptFromImage(mainIdea, uploadedImage);
+      const prompt = await generateVeoPromptFromImage(mainIdea, uploadedImage, apiKey);
       setGeneratedPrompt(prompt);
-    } catch (err) {
+    } catch (err)
+ {
       handleApiError(err);
     } finally {
       setLoadingState('none');
     }
   }, [mainIdea, uploadedImage, loadingState, apiKey]);
 
+  const handleSaveApiKey = (newApiKey: string) => {
+    setApiKey(newApiKey);
+    setIsApiKeyModalOpen(false);
+  };
 
   return (
     <>
@@ -167,7 +160,6 @@ const App: React.FC = () => {
                   setActiveTab(tab);
                   // Clear results and specific inputs when switching tabs
                   setGeneratedPrompt('');
-                  setGeneratedImages([]);
                   setError(null);
                   if (tab !== 'imageToVideo') {
                     setUploadedImage(null);
@@ -179,51 +171,42 @@ const App: React.FC = () => {
                 onSettingChange={(e) => setSetting(e.target.value)}
                 videoStyle={videoStyle}
                 onVideoStyleToggle={handleVideoStyleToggle}
-                imageStyle={imageStyle}
-                onImageStyleChange={setImageStyle}
                 projectCharacters={projectCharacters}
                 sceneCharacters={sceneCharacters}
                 onSceneCharactersChange={setSceneCharacters}
                 onManageCharactersClick={() => setIsCharacterManagerOpen(true)}
+                apiKey={apiKey}
                 onGenerateVideo={handleGenerateVideoPrompt}
-                onGenerateImage={handleGenerateImage}
                 onGenerateVideoFromImage={handleGenerateVideoPromptFromImage}
                 loadingState={loadingState}
                 uploadedImage={uploadedImage}
                 onUploadedImageChange={setUploadedImage}
-                apiKey={apiKey}
               />
               <div className="px-6 sm:px-8 pb-6 sm:pb-8">
                 {error && <ErrorDisplay message={error} />}
                 <PromptOutput 
                   prompt={generatedPrompt} 
-                  images={generatedImages}
                   loadingState={loadingState} 
                 />
               </div>
             </main>
           </div>
         </div>
-        <Footer onApiKeyChangeClick={() => setIsApiModalOpen(true)} />
+        <Footer onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)} />
       </div>
+      
+      <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
+        onSave={handleSaveApiKey}
+        currentApiKey={apiKey}
+      />
 
       <CharacterManager
         isOpen={isCharacterManagerOpen}
         onClose={() => setIsCharacterManagerOpen(false)}
         characters={projectCharacters}
         setCharacters={setProjectCharacters}
-      />
-
-      <ApiKeyModal
-        isOpen={isApiModalOpen}
-        onClose={() => {
-            // Only allow closing if an API key is already set
-            if (apiKey) {
-                setIsApiModalOpen(false);
-            }
-        }}
-        onSave={handleSaveApiKey}
-        currentApiKey={apiKey}
       />
     </>
   );

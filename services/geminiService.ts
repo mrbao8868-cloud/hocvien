@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 let ai: GoogleGenAI | null = null;
@@ -38,6 +39,15 @@ interface VeoTextInput extends BaseTextInput {
     style: string[];
 }
 
+// New interface for image prompt input
+export interface ImageTextInput {
+  idea: string;
+  style:string[];
+  aspectRatio: string;
+  characters: SceneCharacter[]; // dialogue will be ignored
+}
+
+
 // Helper function to handle API call and error
 async function callGemini(contents: any, systemInstruction: string, apiKey: string): Promise<string> {
   try {
@@ -49,7 +59,7 @@ async function callGemini(contents: any, systemInstruction: string, apiKey: stri
         systemInstruction,
       }
     });
-    return response.text.trim();
+    return (response.text || '').trim();
   } catch (error) {
     console.error("Gemini API call failed:", error);
     // Rethrow to be caught by the calling component
@@ -133,6 +143,90 @@ KHÔNG sử dụng markdown. Chỉ trả về một đoạn văn tiếng Anh duy
   };
   const textPart = {
     text: `Ý tưởng bổ sung của người dùng: "${idea || 'Hãy tạo một câu chuyện hoặc hành động thú vị dựa trên hình ảnh này.'}"`
+  };
+
+  const contents = { parts: [imagePart, textPart] };
+
+  return callGemini(contents, systemInstruction, apiKey);
+}
+
+
+export async function generateImagePrompt(input: ImageTextInput, apiKey: string): Promise<string> {
+    const systemInstruction = `Bạn là một chuyên gia sáng tạo prompt cho các mô hình AI tạo ảnh (như Imagen, Midjourney, Stable Diffusion). Nhiệm vụ của bạn là chuyển đổi ý tưởng và mô tả nhân vật từ người dùng thành một prompt chi tiết, nghệ thuật bằng tiếng Anh.
+
+**YÊU CẦU QUAN TRỌNG:**
+1.  **Ngôn ngữ:** Toàn bộ prompt phải bằng **tiếng Anh**.
+2.  **Định dạng:** Prompt phải là một chuỗi các từ khóa hoặc cụm từ mô tả, ngăn cách nhau bằng dấu phẩy. Cuối cùng, thêm tham số aspect ratio.
+3.  **Đồng nhất nhân vật:**
+    -   Sử dụng **triệt để** mô tả chi tiết của từng nhân vật được cung cấp (ngoại hình, quần áo, tính cách) để tạo ra một hình ảnh nhất quán. Đây là ưu tiên hàng đầu.
+    -   Nếu có nhiều nhân vật, hãy mô tả sự tương tác giữa họ.
+4.  **Chi tiết hóa ý tưởng:**
+    -   Mở rộng ý tưởng chính của người dùng thành một cảnh cụ thể.
+    -   Mô tả hành động, cảm xúc, và bối cảnh một cách sống động.
+5.  **Yếu tố nghệ thuật:**
+    -   **Ánh sáng:** Thêm các từ khóa về ánh sáng (ví dụ: "cinematic lighting", "soft natural light", "dramatic Rembrandt lighting").
+    -   **Góc máy:** Mô tả góc nhìn (ví dụ: "low angle shot", "wide angle", "portrait", "close-up shot").
+    -   **Chất liệu & Chi tiết:** Thêm các chi tiết về chất liệu (ví dụ: "detailed silk dress", "rough wooden texture").
+    -   **Chất lượng:** Luôn bao gồm các từ khóa nâng cao chất lượng như "ultra detailed", "photorealistic", "8k", "sharp focus".
+6.  **Xử lý phong cách:**
+    -   Nếu phong cách là 'Hiện thực', hãy tập trung vào việc tạo ra một hình ảnh chân thực như ảnh chụp, với ánh sáng tự nhiên, chi tiết đời thường, và không khí tự nhiên. Sử dụng các từ khóa như 'photorealistic, candid shot, natural lighting, daily life scene'.
+    -   Nếu phong cách là 'Hoạt hình', hãy diễn giải nó thành phong cách anime 2D chất lượng cao, tinh tế, tương tự như phong cách của Studio Ghibli. Sử dụng các từ khóa như 'classic 2D anime style, Studio Ghibli inspired, detailed hand-drawn background, warm and nostalgic lighting, soft color palette, masterpiece'.
+
+**VÍ DỤ:**
+-   **Input:**
+    -   Ý tưởng: "cô giáo và học sinh trong thư viện"
+    -   Nhân vật 1: "Cô giáo trẻ (tóc đen dài, mặc áo dài trắng, dịu dàng)"
+    -   Nhân vật 2: "Cậu học trò nhỏ (mặc đồng phục, vẻ mặt tò mò)"
+    -   Phong cách: "Hoạt hình"
+    -   Tỷ lệ: "16:9"
+-   **Output:**
+    \`masterpiece, Studio Ghibli inspired 2D anime style, a young female teacher with long black hair, wearing a traditional white Ao Dai, gently smiling as she helps a curious little boy in a school uniform with a book, in a cozy library with detailed hand-drawn bookshelves, warm afternoon sunlight streaming through the windows, soft nostalgic lighting, detailed character design, sharp focus, ultra detailed --ar 16:9\`
+---`;
+
+    const charactersString = input.characters.length > 0
+        ? 'Characters: ' + input.characters.map(char => `${char.name} (${char.description})`).join(', ')
+        : 'No specific characters.';
+
+    const contents = `Please generate an image prompt based on the following details:
+- Main Idea: "${input.idea}"
+- Visual Style: "${input.style.join(', ')}"
+- Characters: "${charactersString}"
+- Aspect Ratio: "${input.aspectRatio}"
+`;
+
+    const prompt = await callGemini(contents, systemInstruction, apiKey);
+    // Ensure the aspect ratio is correctly appended if the model forgets
+    const aspectRatioParam = `--ar ${input.aspectRatio}`;
+    if (!prompt.includes('--ar')) {
+      return `${prompt.replace(/,$/, '')} ${aspectRatioParam}`;
+    }
+    return prompt;
+}
+
+export async function analyzeCharacterFromImage(
+  image: { mimeType: string; data: string },
+  apiKey: string
+): Promise<string> {
+  const systemInstruction = `Bạn là một chuyên gia phân tích hình ảnh. Nhiệm vụ của bạn là xem một bức ảnh, xác định nhân vật chính và mô tả họ một cách chi tiết, khách quan bằng tiếng Việt.
+**YÊU CẦU:**
+1.  **Chỉ tập trung vào nhân vật:** Tuyệt đối không mô tả bối cảnh, môi trường xung quanh, hoặc các vật thể khác. Chỉ mô tả nhân vật.
+2.  **Tập trung vào sự thật:** Chỉ mô tả những gì bạn thấy. Tránh suy diễn về tính cách hoặc cảm xúc trừ khi biểu cảm rất rõ ràng.
+3.  **Chi tiết ngoại hình:** Mô tả kỹ các đặc điểm nhận dạng chính như kiểu tóc, màu tóc, màu mắt, hình dáng khuôn mặt, nước da.
+4.  **Trang phục:** Liệt kê chi tiết quần áo, phụ kiện, giày dép.
+5.  **Định dạng:** Trả về một đoạn văn duy nhất, mạch lạc. Không sử dụng markdown hay đầu dòng.
+
+**VÍ DỤ:**
+- **Input:** (Ảnh một cô gái mặc áo dài đứng bên gốc phượng)
+- **Output:** "Một cô gái trẻ có mái tóc đen dài ngang lưng, khuôn mặt trái xoan, mặc áo dài trắng truyền thống."`;
+
+  const imagePart = {
+    inlineData: {
+      mimeType: image.mimeType,
+      data: image.data,
+    },
+  };
+  const textPart = {
+    text: "Phân tích và mô tả nhân vật trong hình ảnh này."
   };
 
   const contents = { parts: [imagePart, textPart] };

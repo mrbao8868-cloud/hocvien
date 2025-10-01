@@ -2,27 +2,35 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { PromptInput, SceneCharacter, ActiveTab } from './components/PromptInput';
 import { PromptOutput } from './components/PromptOutput';
-import { generateVeoPromptFromText, generateVeoPromptFromImage } from './services/geminiService';
+import { generateVeoPromptFromText, generateVeoPromptFromImage, generateImagePrompt, analyzeCharacterFromImage } from './services/geminiService';
 import { ErrorDisplay } from './components/ErrorDisplay';
 import { Footer } from './components/Footer';
 import { CharacterManager, ProjectCharacter } from './components/CharacterManager';
 import { ApiKeyModal } from './components/ApiKeyModal';
 
-type LoadingState = 'none' | 'video';
+type LoadingState = 'none' | 'video' | 'image';
 
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string>('');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('video');
   
-  // Unified state for all inputs. Persists when switching tabs.
+  // Video Prompt (from text) state
   const [mainIdea, setMainIdea] = useState<string>('');
   const [setting, setSetting] = useState<string>('');
   const [videoStyle, setVideoStyle] = useState<string[]>(['Hoạt hình']);
   const [sceneCharacters, setSceneCharacters] = useState<SceneCharacter[]>([]);
+  
+  // Video Prompt (from image) state
   const [uploadedImage, setUploadedImage] = useState<{ mimeType: string; data: string } | null>(null);
 
+  // Image Prompt state
+  const [imageIdea, setImageIdea] = useState<string>('');
+  const [imageStyle, setImageStyle] = useState<string[]>(['Hiện thực']);
+  const [imageAspectRatio, setImageAspectRatio] = useState<string>('1:1');
+  const [imageSceneCharacters, setImageSceneCharacters] = useState<SceneCharacter[]>([]);
 
+  // Shared output state
   const [generatedPrompt, setGeneratedPrompt] = useState<string>('');
   const [loadingState, setLoadingState] = useState<LoadingState>('none');
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +38,7 @@ const App: React.FC = () => {
   // Character Library State
   const [projectCharacters, setProjectCharacters] = useState<ProjectCharacter[]>([]);
   const [isCharacterManagerOpen, setIsCharacterManagerOpen] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   
   // Load API key from localStorage on initial render
   useEffect(() => {
@@ -52,7 +61,6 @@ const App: React.FC = () => {
       if (apiKey) {
         localStorage.setItem('gemini-api-key', apiKey);
       } else {
-        // If the key is empty, remove it
         localStorage.removeItem('gemini-api-key');
       }
     } catch (e) {
@@ -102,6 +110,14 @@ const App: React.FC = () => {
     );
   };
   
+  const handleImageStyleToggle = (styleToToggle: string) => {
+    setImageStyle(prevStyles =>
+      prevStyles.includes(styleToToggle)
+        ? prevStyles.filter(s => s !== styleToToggle)
+        : [...prevStyles, styleToToggle]
+    );
+  };
+
   const handleGenerateVideoPrompt = useCallback(async () => {
     if (loadingState !== 'none' || !mainIdea.trim() || !apiKey) return;
 
@@ -123,20 +139,62 @@ const App: React.FC = () => {
   const handleGenerateVideoPromptFromImage = useCallback(async () => {
     if (loadingState !== 'none' || !uploadedImage || !apiKey) return;
 
-    setLoadingState('video'); // It generates a video prompt
+    setLoadingState('video');
     setError(null);
     setGeneratedPrompt('');
 
     try {
       const prompt = await generateVeoPromptFromImage(mainIdea, uploadedImage, apiKey);
       setGeneratedPrompt(prompt);
-    } catch (err)
- {
+    } catch (err) {
       handleApiError(err);
     } finally {
       setLoadingState('none');
     }
   }, [mainIdea, uploadedImage, loadingState, apiKey]);
+
+  const handleGenerateImagePrompt = useCallback(async () => {
+    if (loadingState !== 'none' || !imageIdea.trim() || !apiKey) return;
+
+    setLoadingState('image');
+    setError(null);
+    setGeneratedPrompt('');
+
+    try {
+        const input = {
+            idea: imageIdea,
+            style: imageStyle,
+            aspectRatio: imageAspectRatio,
+            characters: imageSceneCharacters
+        };
+        const prompt = await generateImagePrompt(input, apiKey);
+        setGeneratedPrompt(prompt);
+    } catch (err) {
+        handleApiError(err);
+    } finally {
+        setLoadingState('none');
+    }
+  }, [imageIdea, imageStyle, imageAspectRatio, imageSceneCharacters, loadingState, apiKey]);
+  
+  const handleAnalyzeImageForCharacter = useCallback(async (image: { mimeType: string; data: string }): Promise<string> => {
+    if (!apiKey) {
+        setError("Vui lòng cung cấp API Key trước khi phân tích ảnh.");
+        throw new Error("API Key is missing");
+    }
+    setIsAnalyzing(true);
+    setError(null); // Clear previous errors
+
+    try {
+      const description = await analyzeCharacterFromImage(image, apiKey);
+      return description;
+    } catch (err) {
+      handleApiError(err);
+      throw err; // Re-throw so the component knows it failed
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [apiKey]);
+
 
   const handleSaveApiKey = (newApiKey: string) => {
     setApiKey(newApiKey);
@@ -158,7 +216,6 @@ const App: React.FC = () => {
                 activeTab={activeTab}
                 onTabChange={(tab) => {
                   setActiveTab(tab);
-                  // Clear results and specific inputs when switching tabs
                   setGeneratedPrompt('');
                   setError(null);
                   if (tab !== 'imageToVideo') {
@@ -181,12 +238,24 @@ const App: React.FC = () => {
                 loadingState={loadingState}
                 uploadedImage={uploadedImage}
                 onUploadedImageChange={setUploadedImage}
+                
+                // Image Prompt props
+                onGenerateImage={handleGenerateImagePrompt}
+                imageIdea={imageIdea}
+                onImageIdeaChange={(e) => setImageIdea(e.target.value)}
+                imageStyle={imageStyle}
+                onImageStyleToggle={handleImageStyleToggle}
+                imageAspectRatio={imageAspectRatio}
+                onImageAspectRatioChange={setImageAspectRatio}
+                imageSceneCharacters={imageSceneCharacters}
+                onImageSceneCharactersChange={setImageSceneCharacters}
               />
               <div className="px-6 sm:px-8 pb-6 sm:pb-8">
                 {error && <ErrorDisplay message={error} />}
                 <PromptOutput 
                   prompt={generatedPrompt} 
-                  loadingState={loadingState} 
+                  loadingState={loadingState}
+                  activeTab={activeTab}
                 />
               </div>
             </main>
@@ -207,6 +276,8 @@ const App: React.FC = () => {
         onClose={() => setIsCharacterManagerOpen(false)}
         characters={projectCharacters}
         setCharacters={setProjectCharacters}
+        onAnalyzeImage={handleAnalyzeImageForCharacter}
+        isAnalyzing={isAnalyzing}
       />
     </>
   );

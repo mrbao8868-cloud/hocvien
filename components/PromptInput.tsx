@@ -6,8 +6,8 @@ export interface SceneCharacter extends ProjectCharacter {
   dialogue: string;
 }
 
-type LoadingState = 'none' | 'video';
-export type ActiveTab = 'video' | 'imageToVideo';
+type LoadingState = 'none' | 'video' | 'image';
+export type ActiveTab = 'video' | 'imageToVideo' | 'image';
 
 const VIDEO_VISUAL_STYLES = [
   {
@@ -21,25 +21,53 @@ const VIDEO_VISUAL_STYLES = [
   }
 ];
 
+const IMAGE_VISUAL_STYLES = [
+  'Hiện thực', 'Hoạt hình'
+];
+
+const ASPECT_RATIOS = [
+  { label: 'Vuông', value: '1:1' },
+  { label: 'Ngang', value: '16:9' },
+  { label: 'Dọc', value: '9:16' },
+  { label: 'Ảnh rộng', value: '4:3' },
+];
+
 interface PromptInputProps {
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
+  apiKey: string;
+  loadingState: LoadingState;
+  
+  // Video (Text-to-Video) Props
   mainIdea: string;
   onMainIdeaChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   setting: string;
   onSettingChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   videoStyle: string[];
   onVideoStyleToggle: (style: string) => void;
-  projectCharacters: ProjectCharacter[];
   sceneCharacters: SceneCharacter[];
   onSceneCharactersChange: React.Dispatch<React.SetStateAction<SceneCharacter[]>>;
-  onManageCharactersClick: () => void;
   onGenerateVideo: () => void;
+  
+  // Video (Image-to-Video) Props
   onGenerateVideoFromImage: () => void;
-  loadingState: LoadingState;
   uploadedImage: { mimeType: string; data: string } | null;
   onUploadedImageChange: (image: { mimeType: string; data: string } | null) => void;
-  apiKey: string;
+  
+  // Image Prompt Props
+  onGenerateImage: () => void;
+  imageIdea: string;
+  onImageIdeaChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  imageStyle: string[];
+  onImageStyleToggle: (style: string) => void;
+  imageAspectRatio: string;
+  onImageAspectRatioChange: (ratio: string) => void;
+  imageSceneCharacters: SceneCharacter[];
+  onImageSceneCharactersChange: React.Dispatch<React.SetStateAction<SceneCharacter[]>>;
+  
+  // Common Props
+  projectCharacters: ProjectCharacter[];
+  onManageCharactersClick: () => void;
 }
 
 const TabButton: React.FC<{
@@ -67,7 +95,7 @@ const CharacterSelector: React.FC<{
   onSceneCharactersChange: React.Dispatch<React.SetStateAction<SceneCharacter[]>>;
   onManageCharactersClick: () => void;
   isLoading: boolean;
-  isForVideo: boolean; // Differentiates between video (with dialogue) and image (without)
+  isForVideo: boolean;
   label: string;
 }> = ({ projectCharacters, sceneCharacters, onSceneCharactersChange, onManageCharactersClick, isLoading, isForVideo, label }) => {
   
@@ -143,9 +171,12 @@ const CharacterSelector: React.FC<{
 export const PromptInput: React.FC<PromptInputProps> = (props) => {
   const { activeTab, onTabChange, mainIdea, onMainIdeaChange, setting, onSettingChange, 
           videoStyle, onVideoStyleToggle,
-          projectCharacters, sceneCharacters, onSceneCharactersChange, onManageCharactersClick,
+          sceneCharacters, onSceneCharactersChange, onManageCharactersClick,
           apiKey, onGenerateVideo, onGenerateVideoFromImage, loadingState,
-          uploadedImage, onUploadedImageChange } = props;
+          uploadedImage, onUploadedImageChange, 
+          onGenerateImage, imageIdea, onImageIdeaChange, imageStyle, onImageStyleToggle,
+          imageAspectRatio, onImageAspectRatioChange, imageSceneCharacters, onImageSceneCharactersChange
+        } = props;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isLoading = loadingState !== 'none';
@@ -267,20 +298,102 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
     </div>
 );
 
+  const renderImageForm = () => (
+    <div className="space-y-4">
+      {/* 1. Main Idea */}
+      <div>
+        <label htmlFor="image-idea" className="block text-sm font-medium text-gray-300 mb-1">1. Ý tưởng chính (*)</label>
+        <textarea
+          id="image-idea"
+          value={imageIdea}
+          onChange={onImageIdeaChange}
+          placeholder="ví dụ: một cô gái đang ngồi đọc sách dưới gốc cây cổ thụ"
+          rows={3}
+          className="w-full p-2 bg-gray-900/50 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500 resize-none"
+          disabled={isLoading}
+        />
+      </div>
+
+      {/* 2. Characters */}
+       <CharacterSelector
+        projectCharacters={props.projectCharacters}
+        sceneCharacters={imageSceneCharacters}
+        onSceneCharactersChange={onImageSceneCharactersChange}
+        onManageCharactersClick={onManageCharactersClick}
+        isLoading={isLoading}
+        isForVideo={false}
+        label="2. Nhân vật (tùy chọn)"
+      />
+
+      {/* 3. Visual Style */}
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">3. Phong cách hình ảnh</label>
+        <div className="flex flex-wrap gap-2">
+          {IMAGE_VISUAL_STYLES.map(style => (
+            <button
+              key={style}
+              onClick={() => onImageStyleToggle(style)}
+              disabled={isLoading}
+              className={`px-3 py-1 text-sm rounded-full transition-colors font-medium ${imageStyle.includes(style) ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            >
+              {style}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. Aspect Ratio */}
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">4. Tỷ lệ khung hình</label>
+        <div className="flex flex-wrap gap-2">
+          {ASPECT_RATIOS.map(ratio => (
+            <button
+              key={ratio.value}
+              onClick={() => onImageAspectRatioChange(ratio.value)}
+              disabled={isLoading}
+              className={`px-4 py-1.5 text-sm rounded-md transition-colors font-medium ${imageAspectRatio === ratio.value ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            >
+              {ratio.label} ({ratio.value})
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Submit Button */}
+      <div className="pt-4">
+        <button
+          onClick={onGenerateImage}
+          disabled={isLoading || !imageIdea.trim() || !apiKey}
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-lg hover:bg-purple-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-transform transform hover:scale-105 disabled:transform-none"
+        >
+          {loadingState === 'image' ? (
+            <><LoadingSpinnerIcon className="w-5 h-5 animate-spin" />Đang tạo...</>
+          ) : (
+            <><ImageIcon className="w-5 h-5" />Tạo Prompt Ảnh</>
+          )}
+        </button>
+        {!apiKey && <p className="text-xs text-center text-yellow-500 mt-2">Vui lòng cung cấp API Key để sử dụng chức năng này.</p>}
+      </div>
+    </div>
+  );
 
   return (
     <>
       <div className="flex border-b border-gray-700">
         <TabButton onClick={() => onTabChange('video')} isActive={activeTab === 'video'} icon={<FilmIcon className="w-5 h-5"/>}>
-          Tạo từ ý tưởng
+          Prompt Video (Ý tưởng)
         </TabButton>
         <TabButton onClick={() => onTabChange('imageToVideo')} isActive={activeTab === 'imageToVideo'} icon={<UploadIcon className="w-5 h-5"/>}>
-          Tạo từ ảnh
+          Prompt Video (Từ ảnh)
+        </TabButton>
+         <TabButton onClick={() => onTabChange('image')} isActive={activeTab === 'image'} icon={<ImageIcon className="w-5 h-5"/>}>
+          Prompt Ảnh
         </TabButton>
       </div>
       <div className="p-6 sm:p-8">
         {activeTab === 'video' && renderVideoForm()}
         {activeTab === 'imageToVideo' && renderImageToVideoForm()}
+        {activeTab === 'image' && renderImageForm()}
       </div>
     </>
   );

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { PlusIcon, TrashIcon, XIcon, UsersIcon } from './icons';
+import React, { useState, useEffect, useRef } from 'react';
+import { PlusIcon, TrashIcon, XIcon, UsersIcon, UploadIcon, LoadingSpinnerIcon } from './icons';
 
 export interface ProjectCharacter {
   id: number;
@@ -12,6 +12,8 @@ interface CharacterManagerProps {
   onClose: () => void;
   characters: ProjectCharacter[];
   setCharacters: React.Dispatch<React.SetStateAction<ProjectCharacter[]>>;
+  onAnalyzeImage: (image: { mimeType: string; data: string }) => Promise<string>;
+  isAnalyzing: boolean;
 }
 
 // Data for suggestions, with a Vietnamese context
@@ -34,8 +36,11 @@ const characterSuggestions = [
   }
 ];
 
-export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onClose, characters, setCharacters }) => {
+export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onClose, characters, setCharacters, onAnalyzeImage, isAnalyzing }) => {
   const [editingCharacter, setEditingCharacter] = useState<ProjectCharacter | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (!isOpen) {
@@ -83,12 +88,39 @@ export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onCl
     if (!editingCharacter) return;
     
     const currentDescription = editingCharacter.description;
-    // Add a space if the description is not empty and doesn't already end with a space.
     const separator = currentDescription.length > 0 && !currentDescription.endsWith(' ') ? ' ' : '';
     const newDescription = currentDescription + separator + suggestion;
 
     setEditingCharacter({ ...editingCharacter, description: newDescription });
   };
+  
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editingCharacter) return;
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+        setAnalysisError(null);
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            try {
+                const base64String = (reader.result as string).split(',')[1];
+                const imageObject = {
+                    mimeType: file.type,
+                    data: base64String,
+                };
+                const description = await onAnalyzeImage(imageObject);
+                setEditingCharacter(prev => prev ? { ...prev, description } : null);
+            } catch (error) {
+                console.error("Analysis failed:", error);
+                setAnalysisError("Phân tích hình ảnh thất bại. Vui lòng thử lại.");
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+    if (e.target) {
+        e.target.value = '';
+    }
+  };
+
 
   if (!isOpen) return null;
 
@@ -146,17 +178,45 @@ export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onCl
                 />
               </div>
               <div>
-                <label htmlFor="description" className="text-sm font-medium text-gray-300">Mô tả chi tiết</label>
-                <textarea
-                  id="description"
-                  name="description"
-                  placeholder="Mô tả ngoại hình, tính cách, trang phục..."
-                  value={editingCharacter.description}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="mt-1 w-full p-2 text-sm bg-gray-800/60 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500 resize-none"
-                />
+                <div className="flex justify-between items-center mb-1">
+                    <label htmlFor="description" className="text-sm font-medium text-gray-300">Mô tả chi tiết</label>
+                    <input
+                        type="file"
+                        accept="image/png, image/jpeg, image/webp"
+                        onChange={handleFileChange}
+                        className="hidden"
+                        ref={fileInputRef}
+                        disabled={isAnalyzing}
+                    />
+                    <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isAnalyzing}
+                        className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-semibold p-1 rounded-md hover:bg-indigo-500/10 disabled:opacity-50 disabled:cursor-wait"
+                    >
+                       {isAnalyzing ? <LoadingSpinnerIcon className="w-4 h-4 animate-spin"/> : <UploadIcon className="w-4 h-4" />}
+                        {isAnalyzing ? 'Đang phân tích...' : 'Phân tích từ ảnh'}
+                    </button>
+                </div>
+                <div className="relative">
+                  <textarea
+                    id="description"
+                    name="description"
+                    placeholder="Mô tả ngoại hình, tính cách, trang phục... hoặc tải ảnh lên để AI phân tích."
+                    value={editingCharacter.description}
+                    onChange={handleInputChange}
+                    rows={4}
+                    className="w-full p-2 text-sm bg-gray-800/60 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500 resize-none disabled:bg-gray-700"
+                    disabled={isAnalyzing}
+                  />
+                  {isAnalyzing && (
+                      <div className="absolute inset-0 bg-gray-800/70 flex items-center justify-center rounded-md">
+                          <LoadingSpinnerIcon className="w-6 h-6 animate-spin text-indigo-400" />
+                      </div>
+                  )}
+                </div>
+                {analysisError && <p className="text-xs text-red-400 mt-1">{analysisError}</p>}
               </div>
+
 
               {/* Suggestions Section */}
               <div className="space-y-3 pt-2">

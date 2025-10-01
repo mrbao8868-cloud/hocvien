@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardIcon, CheckIcon } from './icons';
+import { ActiveTab } from './PromptInput';
 
-type LoadingState = 'none' | 'video';
+type LoadingState = 'none' | 'video' | 'image';
 
 interface PromptOutputProps {
   prompt: string;
   loadingState: LoadingState;
+  activeTab: ActiveTab;
 }
 
-export const PromptOutput: React.FC<PromptOutputProps> = ({ prompt, loadingState }) => {
+export const PromptOutput: React.FC<PromptOutputProps> = ({ prompt, loadingState, activeTab }) => {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -30,13 +32,15 @@ export const PromptOutput: React.FC<PromptOutputProps> = ({ prompt, loadingState
     return null;
   }
 
+  const title = activeTab === 'image' ? 'Prompt ảnh đã tạo:' : 'Prompt video đã tạo:';
+
   return (
     <div className="mt-8 space-y-6">
       {/* Prompt Output */}
       {loadingState !== 'none' || prompt ? (
         <div>
           <h3 className="text-sm font-medium text-gray-300 mb-2">
-            Prompt video đã tạo:
+            {title}
           </h3>
           <div className="relative w-full min-h-[120px] p-4 bg-gray-900/70 border border-gray-700 rounded-lg text-gray-300 font-mono text-sm whitespace-pre-wrap transition-opacity duration-500">
             {loadingState !== 'none' && !prompt && (

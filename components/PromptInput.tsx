@@ -14,15 +14,15 @@ const VIDEO_VISUAL_STYLES = [
     category: 'Phong cách video',
     description: 'Giao diện và cảm nhận nghệ thuật cho video.',
     styles: [
+      { name: 'Hoạt hình', description: 'Hoạt hình 3D hiện đại, mặc định theo phong cách Pixar. Rõ ràng và thân thiện.' },
       { name: 'Hiện thực', description: 'Tái tạo thế giới thực một cách chân thực, như máy ảnh.' },
       { name: 'Điện ảnh', description: 'Tạo cảm giác như một bộ phim với ánh sáng, góc quay và màu sắc chuyên nghiệp.' },
-      { name: 'Hoạt hình', description: 'Hoạt hình 3D hiện đại, mặc định theo phong cách Pixar. Rõ ràng và thân thiện.' }
     ]
   }
 ];
 
 const IMAGE_VISUAL_STYLES = [
-  'Hiện thực', 'Hoạt hình'
+  'Hoạt hình', 'Hiện thực'
 ];
 
 const ASPECT_RATIOS = [
@@ -78,10 +78,10 @@ const TabButton: React.FC<{
 }> = ({ onClick, isActive, children, icon }) => (
   <button
     onClick={onClick}
-    className={`flex-1 flex items-center justify-center gap-2 p-4 text-sm font-semibold border-b-2 transition-colors duration-200 ${
+    className={`flex-1 flex items-center justify-center gap-2.5 p-3 sm:p-4 text-sm font-semibold transition-all duration-300 rounded-t-lg ${
       isActive
-        ? 'border-indigo-500 text-white'
-        : 'border-transparent text-gray-400 hover:text-white hover:bg-gray-700/50'
+        ? 'bg-gray-900/50 text-white'
+        : 'text-gray-400 hover:text-white hover:bg-white/5'
     }`}
   >
     {icon}
@@ -127,15 +127,15 @@ const CharacterSelector: React.FC<{
           Quản lý nhân vật
         </button>
       </div>
-      <div className="p-3 bg-gray-900/50 border border-gray-700 rounded-lg space-y-3">
+      <div className="p-3 bg-black/20 border border-white/10 rounded-lg space-y-3">
         {sceneCharacters.map((char) => (
-          <div key={char.id} className={`p-3 bg-gray-800/60 rounded-md ${!isForVideo && 'flex justify-between items-center'}`}>
+          <div key={char.id} className={`p-3 bg-white/5 rounded-md ${!isForVideo && 'flex justify-between items-center'}`}>
             <div className={`flex justify-between items-start ${isForVideo && 'mb-2'}`}>
               <div>
                 <p className="font-semibold text-white">{char.name}</p>
                 <p className="text-xs text-gray-400">{char.description || "Chưa có mô tả"}</p>
               </div>
-              <button onClick={() => handleRemoveCharacterFromScene(char.id)} className="p-1 text-gray-500 hover:text-red-400">
+              <button onClick={() => handleRemoveCharacterFromScene(char.id)} className="p-1 text-gray-400 hover:text-red-400 transition-colors">
                 <XIcon className="w-4 h-4"/>
               </button>
             </div>
@@ -146,13 +146,13 @@ const CharacterSelector: React.FC<{
                 onChange={(e) => handleDialogueChange(char.id, e.target.value)}
                 disabled={isLoading}
                 rows={2}
-                className="w-full p-2 text-sm bg-gray-900/50 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500 resize-none text-gray-200 placeholder-gray-500"
+                className="w-full p-2 text-sm bg-black/20 border border-white/10 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-none text-gray-200 placeholder-gray-500"
               />
             )}
           </div>
         ))}
         {availableCharacters.length > 0 && (
-          <select value="" onChange={handleAddCharacterToScene} disabled={isLoading} className="w-full p-2 text-sm bg-gray-700 border border-gray-600 rounded-md appearance-none focus:ring-1 focus:ring-indigo-500 text-gray-300">
+          <select value="" onChange={handleAddCharacterToScene} disabled={isLoading} className="w-full p-2.5 text-sm bg-gray-800 border border-white/10 rounded-md appearance-none focus:ring-2 focus:ring-indigo-500 text-gray-300">
             <option value="" disabled>-- Thêm nhân vật --</option>
             {availableCharacters.map(char => <option key={char.id} value={char.id}>{char.name}</option>)}
           </select>
@@ -198,18 +198,20 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
     }
   };
 
+  const commonInputClasses = "w-full p-2.5 bg-white/5 border border-white/10 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white/10 transition-all text-gray-200 placeholder-gray-500";
+  const primaryButtonClasses = "w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-lg shadow-lg shadow-indigo-600/20 hover:from-purple-500 hover:to-indigo-500 disabled:from-gray-700 disabled:to-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] disabled:transform-none disabled:shadow-none";
 
   const renderVideoForm = () => (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* 1. Main Idea */}
       <div>
-        <label htmlFor="video-idea" className="block text-sm font-medium text-gray-300 mb-1">1. Ý tưởng chính (*)</label>
-        <input id="video-idea" type="text" value={mainIdea} onChange={onMainIdeaChange} placeholder="ví dụ: hai cô giáo đang nói chuyện với nhau" className="w-full p-2 bg-gray-900/50 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500" disabled={isLoading}/>
+        <label htmlFor="video-idea" className="block text-sm font-medium text-gray-300 mb-1.5">1. Ý tưởng chính (*)</label>
+        <input id="video-idea" type="text" value={mainIdea} onChange={onMainIdeaChange} placeholder="ví dụ: hai cô giáo đang nói chuyện với nhau" className={commonInputClasses} disabled={isLoading}/>
       </div>
       {/* 2. Setting */}
       <div>
-        <label htmlFor="video-setting" className="block text-sm font-medium text-gray-300 mb-1">2. Bối cảnh</label>
-        <input id="video-setting" type="text" value={setting} onChange={onSettingChange} placeholder="ví dụ: trong một lớp học, sân trường..." className="w-full p-2 bg-gray-900/50 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500" disabled={isLoading}/>
+        <label htmlFor="video-setting" className="block text-sm font-medium text-gray-300 mb-1.5">2. Bối cảnh</label>
+        <input id="video-setting" type="text" value={setting} onChange={onSettingChange} placeholder="ví dụ: trong một lớp học, sân trường..." className={commonInputClasses} disabled={isLoading}/>
       </div>
       {/* 3. Video Style */}
       <div>
@@ -218,7 +220,7 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
           <div key={category.category} className="flex flex-wrap gap-2">
             {category.styles.map(styleItem => (
               <div key={styleItem.name} className="relative group">
-                <button onClick={() => onVideoStyleToggle(styleItem.name)} disabled={isLoading} className={`px-3 py-1 text-sm rounded-full transition-colors font-medium ${videoStyle.includes(styleItem.name) ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                <button onClick={() => onVideoStyleToggle(styleItem.name)} disabled={isLoading} className={`px-4 py-1.5 text-sm rounded-full transition-all duration-200 font-medium border ${videoStyle.includes(styleItem.name) ? 'bg-indigo-500/80 text-white border-indigo-400' : 'bg-white/5 text-gray-300 hover:bg-white/10 border-transparent'}`}>
                   {styleItem.name}
                 </button>
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs p-2 text-xs text-white bg-gray-900 border border-gray-600 rounded-md shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none z-10">{styleItem.description}</div>
@@ -231,20 +233,20 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
       <CharacterSelector {...props} isForVideo={true} label="4. Nhân vật & Lời thoại" />
       {/* Submit Button */}
       <div className="pt-4">
-        <button onClick={onGenerateVideo} disabled={isLoading || !mainIdea.trim() || !apiKey} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-lg hover:bg-purple-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-transform transform hover:scale-105 disabled:transform-none">
+        <button onClick={onGenerateVideo} disabled={isLoading || !mainIdea.trim() || !apiKey} className={primaryButtonClasses}>
           {loadingState === 'video' ? <><LoadingSpinnerIcon className="w-5 h-5 animate-spin" />Đang tạo...</> : 
             <><FilmIcon className="w-5 h-5" />Tạo Prompt Video</>}
         </button>
-        {!apiKey && <p className="text-xs text-center text-yellow-500 mt-2">Vui lòng cung cấp API Key để sử dụng chức năng này.</p>}
+        {!apiKey && <p className="text-xs text-center text-yellow-500 mt-3">Vui lòng cung cấp API Key để sử dụng chức năng này.</p>}
       </div>
     </div>
   );
 
   const renderImageToVideoForm = () => (
-    <div className="space-y-4">
+    <div className="space-y-5">
         {/* 1. Image Upload */}
         <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">1. Tải ảnh lên (*)</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">1. Tải ảnh lên (*)</label>
             <div className="mt-2">
                 <input
                     type="file"
@@ -258,23 +260,23 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isLoading}
-                        className="w-full flex flex-col items-center justify-center px-6 py-10 border-2 border-dashed border-gray-600 rounded-lg text-center hover:border-indigo-500 transition-colors"
+                        className="w-full flex flex-col items-center justify-center px-6 py-8 sm:py-10 border border-white/10 bg-white/5 rounded-lg text-center hover:border-indigo-500 hover:bg-indigo-500/10 transition-all duration-300 group"
                     >
-                        <UploadIcon className="w-8 h-8 text-gray-500 mb-2" />
+                        <UploadIcon className="w-8 h-8 text-gray-500 mb-3 group-hover:text-indigo-400 transition-colors" />
                         <span className="text-sm font-semibold text-indigo-400">Nhấn để chọn ảnh</span>
-                        <span className="text-xs text-gray-500">PNG, JPG, WEBP</span>
+                        <span className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP</span>
                     </button>
                 ) : (
                     <div className="relative group">
                         <img
                             src={`data:${uploadedImage.mimeType};base64,${uploadedImage.data}`}
                             alt="Preview"
-                            className="w-full h-auto max-h-64 object-contain rounded-lg border border-gray-600"
+                            className="w-full h-auto max-h-64 object-contain rounded-lg border border-white/10"
                         />
                         <button
                             onClick={() => onUploadedImageChange(null)}
                             disabled={isLoading}
-                            className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/80 transition-opacity opacity-0 group-hover:opacity-100"
+                            className="absolute top-2 right-2 p-1.5 bg-black/60 backdrop-blur-sm text-white rounded-full hover:bg-black/80 transition-opacity opacity-0 group-hover:opacity-100"
                         >
                             <XIcon className="w-4 h-4" />
                         </button>
@@ -284,32 +286,32 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
         </div>
         {/* 2. Main Idea */}
         <div>
-            <label htmlFor="image-to-video-idea" className="block text-sm font-medium text-gray-300 mb-1">2. Ý tưởng bổ sung (tùy chọn)</label>
-            <textarea id="image-to-video-idea" value={mainIdea} onChange={onMainIdeaChange} placeholder={`Gợi ý: 'làm cho nhân vật di chuyển', 'thêm hiệu ứng tuyết rơi', hoặc thêm lời thoại tiếng Việt như: Người đàn ông nói: "Chúng ta đi thôi."`} rows={3} className="w-full p-2 bg-gray-900/50 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500 resize-none" disabled={isLoading}/>
+            <label htmlFor="image-to-video-idea" className="block text-sm font-medium text-gray-300 mb-1.5">2. Ý tưởng bổ sung (tùy chọn)</label>
+            <textarea id="image-to-video-idea" value={mainIdea} onChange={onMainIdeaChange} placeholder={`Gợi ý: 'làm cho nhân vật di chuyển', 'thêm hiệu ứng tuyết rơi', hoặc thêm lời thoại tiếng Việt như: Người đàn ông nói: "Chúng ta đi thôi."`} rows={3} className={`${commonInputClasses} resize-none`} disabled={isLoading}/>
         </div>
         {/* Submit Button */}
         <div className="pt-4">
-            <button onClick={onGenerateVideoFromImage} disabled={isLoading || !uploadedImage || !apiKey} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-lg hover:bg-purple-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-transform transform hover:scale-105 disabled:transform-none">
+            <button onClick={onGenerateVideoFromImage} disabled={isLoading || !uploadedImage || !apiKey} className={primaryButtonClasses}>
                 {loadingState === 'video' ? <><LoadingSpinnerIcon className="w-5 h-5 animate-spin" />Đang tạo...</> : 
                   <><FilmIcon className="w-5 h-5" />Tạo Prompt Video</>}
             </button>
-            {!apiKey && <p className="text-xs text-center text-yellow-500 mt-2">Vui lòng cung cấp API Key để sử dụng chức năng này.</p>}
+            {!apiKey && <p className="text-xs text-center text-yellow-500 mt-3">Vui lòng cung cấp API Key để sử dụng chức năng này.</p>}
         </div>
     </div>
 );
 
   const renderImageForm = () => (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* 1. Main Idea */}
       <div>
-        <label htmlFor="image-idea" className="block text-sm font-medium text-gray-300 mb-1">1. Ý tưởng chính (*)</label>
+        <label htmlFor="image-idea" className="block text-sm font-medium text-gray-300 mb-1.5">1. Ý tưởng chính (*)</label>
         <textarea
           id="image-idea"
           value={imageIdea}
           onChange={onImageIdeaChange}
           placeholder="ví dụ: một cô gái đang ngồi đọc sách dưới gốc cây cổ thụ"
           rows={3}
-          className="w-full p-2 bg-gray-900/50 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500 resize-none"
+          className={`${commonInputClasses} resize-none`}
           disabled={isLoading}
         />
       </div>
@@ -334,7 +336,7 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
               key={style}
               onClick={() => onImageStyleToggle(style)}
               disabled={isLoading}
-              className={`px-3 py-1 text-sm rounded-full transition-colors font-medium ${imageStyle.includes(style) ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+              className={`px-4 py-1.5 text-sm rounded-full transition-all duration-200 font-medium border ${imageStyle.includes(style) ? 'bg-indigo-500/80 text-white border-indigo-400' : 'bg-white/5 text-gray-300 hover:bg-white/10 border-transparent'}`}
             >
               {style}
             </button>
@@ -345,15 +347,16 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
       {/* 4. Aspect Ratio */}
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">4. Tỷ lệ khung hình</label>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {ASPECT_RATIOS.map(ratio => (
             <button
               key={ratio.value}
               onClick={() => onImageAspectRatioChange(ratio.value)}
               disabled={isLoading}
-              className={`px-4 py-1.5 text-sm rounded-md transition-colors font-medium ${imageAspectRatio === ratio.value ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+              className={`px-4 py-2 text-sm rounded-lg transition-all duration-200 font-medium border ${imageAspectRatio === ratio.value ? 'bg-indigo-500/80 text-white border-indigo-400' : 'bg-white/5 text-gray-300 hover:bg-white/10 border-transparent'}`}
             >
-              {ratio.label} ({ratio.value})
+              <span className="block font-semibold">{ratio.label}</span>
+              <span className="block text-xs opacity-70">{ratio.value}</span>
             </button>
           ))}
         </div>
@@ -364,7 +367,7 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
         <button
           onClick={onGenerateImage}
           disabled={isLoading || !imageIdea.trim() || !apiKey}
-          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-lg hover:bg-purple-500 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-transform transform hover:scale-105 disabled:transform-none"
+          className={primaryButtonClasses}
         >
           {loadingState === 'image' ? (
             <><LoadingSpinnerIcon className="w-5 h-5 animate-spin" />Đang tạo...</>
@@ -372,25 +375,25 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
             <><ImageIcon className="w-5 h-5" />Tạo Prompt Ảnh</>
           )}
         </button>
-        {!apiKey && <p className="text-xs text-center text-yellow-500 mt-2">Vui lòng cung cấp API Key để sử dụng chức năng này.</p>}
+        {!apiKey && <p className="text-xs text-center text-yellow-500 mt-3">Vui lòng cung cấp API Key để sử dụng chức năng này.</p>}
       </div>
     </div>
   );
 
   return (
     <>
-      <div className="flex border-b border-gray-700">
+      <div className="flex border-b border-white/10 px-1 sm:px-4 pt-2">
         <TabButton onClick={() => onTabChange('video')} isActive={activeTab === 'video'} icon={<FilmIcon className="w-5 h-5"/>}>
-          Prompt Video (Ý tưởng)
+          <span className="hidden sm:inline">Prompt </span>Video (Ý tưởng)
         </TabButton>
         <TabButton onClick={() => onTabChange('imageToVideo')} isActive={activeTab === 'imageToVideo'} icon={<UploadIcon className="w-5 h-5"/>}>
-          Prompt Video (Từ ảnh)
+          <span className="hidden sm:inline">Prompt </span>Video (Từ ảnh)
         </TabButton>
          <TabButton onClick={() => onTabChange('image')} isActive={activeTab === 'image'} icon={<ImageIcon className="w-5 h-5"/>}>
-          Prompt Ảnh
+          <span className="hidden sm:inline">Prompt </span>Ảnh
         </TabButton>
       </div>
-      <div className="p-6 sm:p-8">
+      <div className="p-4 sm:p-8">
         {activeTab === 'video' && renderVideoForm()}
         {activeTab === 'imageToVideo' && renderImageToVideoForm()}
         {activeTab === 'image' && renderImageForm()}

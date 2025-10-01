@@ -26,19 +26,19 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div 
-        className="relative w-full max-w-lg bg-gray-800 border border-gray-700 rounded-2xl shadow-xl flex flex-col" 
+        className="relative w-full max-w-lg bg-gray-900/60 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col" 
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-white/10">
           <h2 className="text-lg font-semibold text-white">Cấu hình API Key</h2>
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-white">
+          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
               <XIcon className="w-5 h-5"/>
           </button>
         </div>
-        <div className="p-6">
-            <p className="text-sm text-gray-400 mb-4">
+        <div className="p-4 sm:p-6 space-y-4">
+            <p className="text-sm text-gray-400 leading-relaxed">
               API Key của bạn được lưu trữ an toàn trong bộ nhớ cục bộ (localStorage) của trình duyệt. Ứng dụng này không lưu trữ hay gửi key của bạn đến bất kỳ nơi nào khác.
             </p>
           <div>
@@ -49,15 +49,15 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
               value={key}
               onChange={(e) => setKey(e.target.value)}
               placeholder="Nhập API Key của bạn vào đây"
-              className="w-full p-2 bg-gray-900/50 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500"
+              className="w-full p-2.5 bg-white/5 border border-white/10 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white/10 transition-all text-gray-200"
             />
           </div>
         </div>
-        <div className="flex justify-end gap-3 p-4 bg-gray-900/50 border-t border-gray-700 rounded-b-xl">
-          <button onClick={onClose} className="px-4 py-2 text-sm bg-gray-600 hover:bg-gray-500 rounded-md transition-colors">
+        <div className="flex justify-end gap-3 p-4 bg-black/20 border-t border-white/10 rounded-b-2xl">
+          <button onClick={onClose} className="px-4 py-2 text-sm bg-white/10 hover:bg-white/20 rounded-md transition-colors">
               Hủy
           </button>
-          <button onClick={handleSave} disabled={!key.trim()} className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 rounded-md disabled:bg-indigo-800 disabled:cursor-not-allowed transition-colors">
+          <button onClick={handleSave} disabled={!key.trim()} className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 rounded-md disabled:bg-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors">
             Lưu và Sử dụng
           </button>
         </div>

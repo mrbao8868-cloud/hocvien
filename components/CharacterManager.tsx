@@ -16,7 +16,6 @@ interface CharacterManagerProps {
   isAnalyzing: boolean;
 }
 
-// Data for suggestions, with a Vietnamese context
 const characterSuggestions = [
   {
     category: 'Ngoại hình',
@@ -41,10 +40,10 @@ export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onCl
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
-
   useEffect(() => {
     if (!isOpen) {
       setEditingCharacter(null);
+      setAnalysisError(null);
     }
   }, [isOpen]);
 
@@ -88,7 +87,7 @@ export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onCl
     if (!editingCharacter) return;
     
     const currentDescription = editingCharacter.description;
-    const separator = currentDescription.length > 0 && !currentDescription.endsWith(' ') ? ' ' : '';
+    const separator = currentDescription.length > 0 && !currentDescription.endsWith(', ') && !currentDescription.endsWith(' ') ? ', ' : '';
     const newDescription = currentDescription + separator + suggestion;
 
     setEditingCharacter({ ...editingCharacter, description: newDescription });
@@ -121,41 +120,42 @@ export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onCl
     }
   };
 
-
   if (!isOpen) return null;
 
+  const commonInputClasses = "w-full p-2.5 bg-white/5 border border-white/10 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white/10 transition-all text-gray-200 placeholder-gray-500";
+
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-opacity duration-300" onClick={onClose}>
       <div 
-        className="relative w-full max-w-2xl bg-gray-800 border border-gray-700 rounded-2xl shadow-xl flex flex-col max-h-[90vh]" 
+        className="relative w-full max-w-2xl bg-gray-900/60 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-fade-in" 
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
           <div className="flex items-center gap-3">
             <UsersIcon className="w-6 h-6 text-indigo-400"/>
             <h2 className="text-lg font-semibold text-white">Thư viện nhân vật</h2>
           </div>
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-white">
+          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
             <XIcon className="w-5 h-5"/>
           </button>
         </div>
 
-        <div className="flex-grow p-4 overflow-y-auto space-y-4">
+        <div className="flex-grow p-4 sm:p-6 overflow-y-auto space-y-4">
           {characters.length === 0 && !editingCharacter && (
             <div className="text-center text-gray-400 py-10">
               <p>Thư viện của bạn trống.</p>
-              <p>Nhấn "Thêm nhân vật mới" để bắt đầu.</p>
+              <p className="text-sm mt-1">Nhấn "Thêm nhân vật mới" để bắt đầu.</p>
             </div>
           )}
           {characters.map(char => (
-            <div key={char.id} className="p-3 bg-gray-900/50 rounded-lg flex items-center justify-between">
+            <div key={char.id} className="p-3 bg-white/5 rounded-lg flex items-center justify-between transition-colors hover:bg-white/10">
               <div>
                 <p className="font-semibold text-white">{char.name}</p>
                 <p className="text-sm text-gray-400 truncate max-w-md">{char.description || "Chưa có mô tả"}</p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => handleEdit(char)} className="text-sm text-indigo-400 hover:text-indigo-300">Sửa</button>
-                <button onClick={() => handleDelete(char.id)} className="p-1 text-gray-500 hover:text-red-400">
+                <button onClick={() => handleEdit(char)} className="text-sm text-indigo-400 hover:text-indigo-300 font-medium">Sửa</button>
+                <button onClick={() => handleDelete(char.id)} className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-colors">
                   <TrashIcon className="w-4 h-4"/>
                 </button>
               </div>
@@ -163,7 +163,7 @@ export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onCl
           ))}
 
           {editingCharacter && (
-            <div className="p-4 bg-gray-900 rounded-lg border border-indigo-500/50 mt-4 space-y-3">
+            <div className="p-4 bg-black/20 rounded-lg border border-indigo-500/30 mt-4 space-y-4">
               <h3 className="font-semibold text-white">{characters.some(c => c.id === editingCharacter.id) ? "Chỉnh sửa nhân vật" : "Tạo nhân vật mới"}</h3>
               <div>
                 <label htmlFor="name" className="text-sm font-medium text-gray-300">Tên định danh (*)</label>
@@ -174,11 +174,11 @@ export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onCl
                   placeholder="ví dụ: Cô giáo trẻ"
                   value={editingCharacter.name}
                   onChange={handleInputChange}
-                  className="mt-1 w-full p-2 text-sm bg-gray-800/60 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500"
+                  className={`mt-1.5 ${commonInputClasses}`}
                 />
               </div>
               <div>
-                <div className="flex justify-between items-center mb-1">
+                <div className="flex justify-between items-center mb-1.5">
                     <label htmlFor="description" className="text-sm font-medium text-gray-300">Mô tả chi tiết</label>
                     <input
                         type="file"
@@ -205,11 +205,11 @@ export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onCl
                     value={editingCharacter.description}
                     onChange={handleInputChange}
                     rows={4}
-                    className="w-full p-2 text-sm bg-gray-800/60 border border-gray-600 rounded-md focus:ring-1 focus:ring-indigo-500 resize-none disabled:bg-gray-700"
+                    className={`${commonInputClasses} resize-none disabled:bg-gray-700`}
                     disabled={isAnalyzing}
                   />
                   {isAnalyzing && (
-                      <div className="absolute inset-0 bg-gray-800/70 flex items-center justify-center rounded-md">
+                      <div className="absolute inset-0 bg-gray-900/70 flex items-center justify-center rounded-md">
                           <LoadingSpinnerIcon className="w-6 h-6 animate-spin text-indigo-400" />
                       </div>
                   )}
@@ -217,8 +217,6 @@ export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onCl
                 {analysisError && <p className="text-xs text-red-400 mt-1">{analysisError}</p>}
               </div>
 
-
-              {/* Suggestions Section */}
               <div className="space-y-3 pt-2">
                 <p className="text-sm font-medium text-gray-400">Gợi ý mô tả:</p>
                 {characterSuggestions.map(group => (
@@ -229,7 +227,7 @@ export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onCl
                         <button
                           key={item}
                           onClick={() => handleSuggestionClick(item)}
-                          className="px-2.5 py-1 bg-gray-700 text-gray-300 text-xs rounded-full hover:bg-gray-600 hover:text-white transition-colors"
+                          className="px-2.5 py-1 bg-white/5 text-gray-300 text-xs rounded-full hover:bg-white/10 hover:text-white transition-colors"
                         >
                           + {item}
                         </button>
@@ -239,16 +237,16 @@ export const CharacterManager: React.FC<CharacterManagerProps> = ({ isOpen, onCl
                 ))}
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setEditingCharacter(null)} className="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-500 rounded-md">Hủy</button>
-                <button onClick={handleSave} disabled={!editingCharacter.name.trim()} className="px-3 py-1 text-sm bg-indigo-600 hover:bg-indigo-500 rounded-md disabled:bg-indigo-800">Lưu</button>
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
+                <button onClick={() => setEditingCharacter(null)} className="w-full sm:w-auto px-4 py-2 text-sm bg-white/10 hover:bg-white/20 rounded-md transition-colors">Hủy</button>
+                <button onClick={handleSave} disabled={!editingCharacter.name.trim()} className="w-full sm:w-auto px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 rounded-md disabled:bg-gray-700 disabled:text-gray-400 transition-colors">Lưu</button>
               </div>
             </div>
           )}
         </div>
 
-        <div className="p-4 border-t border-gray-700">
-          <button onClick={handleAddNew} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600/80 text-white font-semibold rounded-lg hover:bg-indigo-600 disabled:bg-indigo-900 transition-colors" disabled={!!editingCharacter}>
+        <div className="p-4 border-t border-white/10 bg-black/20 flex-shrink-0">
+          <button onClick={handleAddNew} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600/80 text-white font-semibold rounded-lg hover:bg-indigo-600 disabled:bg-gray-700 disabled:cursor-not-allowed transition-colors" disabled={!!editingCharacter}>
             <PlusIcon className="w-5 h-5"/>
             Thêm nhân vật mới
           </button>

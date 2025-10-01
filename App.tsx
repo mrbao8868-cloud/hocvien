@@ -26,7 +26,7 @@ const App: React.FC = () => {
 
   // Image Prompt state
   const [imageIdea, setImageIdea] = useState<string>('');
-  const [imageStyle, setImageStyle] = useState<string[]>(['Hiện thực']);
+  const [imageStyle, setImageStyle] = useState<string[]>(['Hoạt hình']);
   const [imageAspectRatio, setImageAspectRatio] = useState<string>('1:1');
   const [imageSceneCharacters, setImageSceneCharacters] = useState<SceneCharacter[]>([]);
 
@@ -203,15 +203,16 @@ const App: React.FC = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-900 text-gray-100 font-sans flex flex-col">
-        <div className="relative flex-grow flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
+      <div className="min-h-screen bg-black text-gray-200 font-sans flex flex-col">
+        <div className="relative flex-grow flex flex-col items-center justify-center p-3 sm:p-6 lg:p-8 overflow-hidden">
           <div 
-            className="absolute top-0 left-0 w-full h-full bg-cover bg-center opacity-10" 
-            style={{backgroundImage: 'url(https://picsum.photos/seed/veobg/1920/1080)'}}
-          ></div>
-          <div className="w-full max-w-3xl z-10 space-y-8">
+            className="absolute top-0 left-0 w-full h-full bg-black"
+          >
+             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900/80 via-transparent to-black"></div>
+          </div>
+          <div className="w-full max-w-4xl z-10 space-y-8">
             <Header />
-            <main className="bg-gray-800/50 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-700">
+            <main className="bg-gray-900/40 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl border border-white/10 transition-all duration-300">
               <PromptInput
                 activeTab={activeTab}
                 onTabChange={(tab) => {
@@ -250,7 +251,7 @@ const App: React.FC = () => {
                 imageSceneCharacters={imageSceneCharacters}
                 onImageSceneCharactersChange={setImageSceneCharacters}
               />
-              <div className="px-6 sm:px-8 pb-6 sm:pb-8">
+              <div className="px-4 sm:px-8 pb-4 sm:pb-8">
                 {error && <ErrorDisplay message={error} />}
                 <PromptOutput 
                   prompt={generatedPrompt} 

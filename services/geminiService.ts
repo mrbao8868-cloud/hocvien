@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 let ai: GoogleGenAI | null = null;
@@ -115,6 +114,33 @@ The two exchange a warm, supportive glance. In the background, a wall clock tick
   return callGemini(contents, systemInstruction, apiKey);
 }
 
+export async function generateVeoPromptFromFreestyle(
+  userInput: string,
+  apiKey: string
+): Promise<string> {
+  const systemInstruction = `Bạn là một chuyên gia sáng tạo prompt cho các mô hình AI tạo video như Google Veo. Nhiệm vụ của bạn là chuyển đổi một ý tưởng, kịch bản, hoặc lời thoại thô do người dùng cung cấp thành một prompt video duy nhất, chi tiết, đậm chất điện ảnh bằng tiếng Anh.
+
+**YÊU CẦU QUAN TRỌNG:**
+1.  **Phân tích & Mở rộng:** Đọc kỹ văn bản của người dùng để nắm bắt bối cảnh, nhân vật, hành động và cảm xúc cốt lõi. Sau đó, hãy làm phong phú nó.
+2.  **Ngôn ngữ:** Toàn bộ prompt mô tả cảnh, hành động, và máy quay phải bằng **tiếng Anh**. Tuy nhiên, nếu người dùng cung cấp **lời thoại bằng tiếng Việt**, bạn PHẢI giữ nguyên lời thoại đó và lồng ghép nó một cách tự nhiên vào trong prompt.
+3.  **Chất lượng điện ảnh:**
+    - **Mô tả chi tiết:** Thêm các chi tiết tinh tế về môi trường (cơn gió nhẹ, tiếng động xung quanh, vật thể trong cảnh).
+    - **Ánh sáng & không khí:** Mô tả ánh sáng (ánh nắng ấm áp, ánh đèn neon) và không khí chung của cảnh (hồi hộp, lãng mạn, vui tươi).
+    - **Kỹ thuật quay phim:** Đề xuất các chuyển động và góc máy cụ thể (góc máy thấp, lia máy chậm - dolly-in, cảnh quay từ trên cao - aerial shot).
+    - **Cảm xúc & hành động nhân vật:** Mô tả biểu cảm, giọng điệu, và những cử chỉ nhỏ của nhân vật dựa trên nội dung gốc.
+4.  **Định dạng:** Chỉ trả về một đoạn văn duy nhất, mạch lạc. KHÔNG sử dụng markdown.
+
+**VÍ DỤ:**
+- **Input của người dùng:** "Cô giáo nói với học sinh: 'Chúng ta nên tổ chức một buổi học nhẹ nhàng'. Em học sinh vui vẻ trả lời: 'Ý hay quá cô!'"
+- **Output (Prompt chuẩn):**
+A warm afternoon sunlight streams through the window of a teacher's lounge. The camera slowly dolly-ins toward the teachers. The older teacher looks thoughtful, her tone tinged with quiet determination: “Chúng ta nên tổ chức một buổi học nhẹ nhàng, kiểu như chơi mà học, giúp các em thư giãn trước kỳ thi.” The younger teacher’s face lights up with a hopeful smile, her voice filled with excitement: “Ý hay quá cô! Em sẽ chuẩn bị một tiết học ngoài trời, có trò chơi và kể chuyện.” The two exchange a warm, supportive glance, creating a heartfelt tone.`;
+  
+  const contents = `Vui lòng chuyển đổi ý tưởng/kịch bản sau thành một prompt video hoàn chỉnh: "${userInput}"`;
+
+  return callGemini(contents, systemInstruction, apiKey);
+}
+
+
 export async function generateVeoPromptFromImage(
   idea: string,
   image: { mimeType: string; data: string },
@@ -172,7 +198,9 @@ export async function generateImagePrompt(input: ImageTextInput, apiKey: string)
     -   Nếu phong cách là 'Hiện thực', hãy tập trung vào việc tạo ra một hình ảnh chân thực như ảnh chụp, với ánh sáng tự nhiên, chi tiết đời thường, và không khí tự nhiên. Sử dụng các từ khóa như 'photorealistic, candid shot, natural lighting, daily life scene'.
     -   Nếu phong cách là 'Hoạt hình', hãy diễn giải nó thành phong cách anime 2D chất lượng cao, tinh tế, tương tự như phong cách của Studio Ghibli. Sử dụng các từ khóa như 'classic 2D anime style, Studio Ghibli inspired, detailed hand-drawn background, warm and nostalgic lighting, soft color palette, masterpiece'.
 
-**VÍ DỤ:**
+**CÁC VÍ DỤ:**
+
+**1. VÍ DỤ VỀ PHONG CÁCH "HOẠT HÌNH":**
 -   **Input:**
     -   Ý tưởng: "cô giáo và học sinh trong thư viện"
     -   Nhân vật 1: "Cô giáo trẻ (tóc đen dài, mặc áo dài trắng, dịu dàng)"
@@ -181,6 +209,15 @@ export async function generateImagePrompt(input: ImageTextInput, apiKey: string)
     -   Tỷ lệ: "16:9"
 -   **Output:**
     \`masterpiece, Studio Ghibli inspired 2D anime style, a young female teacher with long black hair, wearing a traditional white Ao Dai, gently smiling as she helps a curious little boy in a school uniform with a book, in a cozy library with detailed hand-drawn bookshelves, warm afternoon sunlight streaming through the windows, soft nostalgic lighting, detailed character design, sharp focus, ultra detailed --ar 16:9\`
+
+**2. VÍ DỤ VỀ PHONG CÁCH "HIỆN THỰC":**
+-   **Input:**
+    -   Ý tưởng: "một người đàn ông lớn tuổi đang ngồi đọc báo trên ghế đá công viên"
+    -   Nhân vật: "Người đàn ông (râu tóc bạc phơ, mặc áo sơ mi cũ, đeo kính)"
+    -   Phong cách: "Hiện thực"
+    -   Tỷ lệ: "4:3"
+-   **Output:**
+    \`photorealistic, candid shot of an elderly Vietnamese man with silver hair and a thoughtful expression, wearing glasses and a simple button-up shirt, sitting on a park bench, deeply engrossed in reading a newspaper, soft natural morning light filtering through the trees, daily life scene, shallow depth of field, sharp focus on the man's face, ultra detailed, 8k --ar 4:3\`
 ---`;
 
     const charactersString = input.characters.length > 0
@@ -207,17 +244,24 @@ export async function analyzeCharacterFromImage(
   image: { mimeType: string; data: string },
   apiKey: string
 ): Promise<string> {
-  const systemInstruction = `Bạn là một chuyên gia phân tích hình ảnh. Nhiệm vụ của bạn là xem một bức ảnh, xác định nhân vật chính và mô tả họ một cách chi tiết, khách quan bằng tiếng Việt.
-**YÊU CẦU:**
-1.  **Chỉ tập trung vào nhân vật:** Tuyệt đối không mô tả bối cảnh, môi trường xung quanh, hoặc các vật thể khác. Chỉ mô tả nhân vật.
-2.  **Tập trung vào sự thật:** Chỉ mô tả những gì bạn thấy. Tránh suy diễn về tính cách hoặc cảm xúc trừ khi biểu cảm rất rõ ràng.
-3.  **Chi tiết ngoại hình:** Mô tả kỹ các đặc điểm nhận dạng chính như kiểu tóc, màu tóc, màu mắt, hình dáng khuôn mặt, nước da.
-4.  **Trang phục:** Liệt kê chi tiết quần áo, phụ kiện, giày dép.
-5.  **Định dạng:** Trả về một đoạn văn duy nhất, mạch lạc. Không sử dụng markdown hay đầu dòng.
+  const systemInstruction = `Bạn là một chuyên gia phân tích hình ảnh với mục tiêu tạo ra mô tả nhân vật đồng nhất để sử dụng trong các mô hình AI khác. Nhiệm vụ của bạn là phân tích **KHUÔN MẶT** của nhân vật chính trong ảnh một cách **CỰC KỲ CHI TIẾT** bằng tiếng Việt.
+
+**YÊU CẦU TỐI QUAN TRỌNG:**
+1.  **ƯU TIÊN TUYỆT ĐỐI VÀO KHUÔN MẶT:** Hơn 80% mô tả phải tập trung vào các đặc điểm trên mặt để đảm bảo AI có thể tái tạo lại nhân vật một cách nhất quán. Bỏ qua bối cảnh.
+2.  **MÔ TẢ SIÊU CHI TIẾT:**
+    *   **Khuôn mặt:** Hình dáng tổng thể (trái xoan, tròn, vuông, dài, góc cạnh).
+    *   **Mắt:** Hình dáng (bồ câu, một mí, hai mí, xếch), màu sắc (đen, nâu sẫm), khoảng cách giữa hai mắt. Mô tả cả lông mày (dáng cong, ngang, rậm, thưa) và lông mi.
+    *   **Mũi:** Dáng mũi (thẳng, cao, tẹt, khoằm), kích thước cánh mũi.
+    *   **Miệng:** Hình dáng môi (mỏng, dày, trái tim), độ cong của khóe miệng.
+    *   **Da:** Tông màu da (trắng hồng, ngăm đen, vàng), có đặc điểm gì đặc biệt không (tàn nhang, nốt ruồi - nếu có).
+    *   **Tóc:** Mô tả **CHỈ** phần tóc có thể nhìn thấy liên quan đến khuôn mặt (kiểu mái, tóc mai, có che trán không).
+3.  **Mô tả trang phục và cơ thể (Ngắn gọn):** Sau khi đã mô tả kỹ khuôn mặt, chỉ cần thêm một câu ngắn gọn về trang phục và dáng người tổng thể.
+4.  **Khách quan:** Chỉ mô tả những gì thấy được. Không suy diễn tính cách.
+5.  **Định dạng:** Trả về một đoạn văn duy nhất, mạch lạc. Không dùng markdown.
 
 **VÍ DỤ:**
-- **Input:** (Ảnh một cô gái mặc áo dài đứng bên gốc phượng)
-- **Output:** "Một cô gái trẻ có mái tóc đen dài ngang lưng, khuôn mặt trái xoan, mặc áo dài trắng truyền thống."`;
+- **Input:** (Ảnh chân dung một cô gái)
+- **Output:** "Một cô gái trẻ với khuôn mặt trái xoan thanh tú. Cô có đôi mắt hai mí to tròn, màu nâu sẫm, hàng lông mi dài và cong vút, lông mày dáng vòng cung tự nhiên. Sống mũi cao và thẳng, đầu mũi nhỏ. Đôi môi đầy đặn hình trái tim, khóe miệng hơi nhếch lên tạo cảm giác thân thiện. Làn da trắng hồng mịn màng. Mái tóc đen dài, rẽ ngôi giữa, vài sợi tóc mai mềm mại xõa xuống hai bên má. Cô mặc một chiếc áo sơ mi trắng đơn giản."`;
 
   const imagePart = {
     inlineData: {
@@ -226,7 +270,7 @@ export async function analyzeCharacterFromImage(
     },
   };
   const textPart = {
-    text: "Phân tích và mô tả nhân vật trong hình ảnh này."
+    text: "Phân tích và mô tả nhân vật trong hình ảnh này theo yêu cầu."
   };
 
   const contents = { parts: [imagePart, textPart] };

@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
-import { PromptInput, SceneCharacter, ActiveTab } from './components/PromptInput';
+import { PromptInput, SceneCharacter, ActiveTab, VideoInputMode } from './components/PromptInput';
 import { PromptOutput } from './components/PromptOutput';
-import { generateVeoPromptFromText, generateVeoPromptFromImage, generateImagePrompt, analyzeCharacterFromImage } from './services/geminiService';
+import { generateVeoPromptFromText, generateVeoPromptFromImage, generateImagePrompt, analyzeCharacterFromImage, generateVeoPromptFromFreestyle } from './services/geminiService';
 import { ErrorDisplay } from './components/ErrorDisplay';
 import { Footer } from './components/Footer';
 import { CharacterManager, ProjectCharacter } from './components/CharacterManager';
@@ -14,13 +14,17 @@ const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string>('');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('video');
+  const [videoInputMode, setVideoInputMode] = useState<VideoInputMode>('structured');
   
-  // Video Prompt (from text) state
+  // Video Prompt (structured) state
   const [mainIdea, setMainIdea] = useState<string>('');
   const [setting, setSetting] = useState<string>('');
   const [videoStyle, setVideoStyle] = useState<string[]>(['Hoạt hình']);
   const [sceneCharacters, setSceneCharacters] = useState<SceneCharacter[]>([]);
   
+  // Video Prompt (freestyle) state
+  const [freestyleInput, setFreestyleInput] = useState<string>('');
+
   // Video Prompt (from image) state
   const [uploadedImage, setUploadedImage] = useState<{ mimeType: string; data: string } | null>(null);
 
@@ -119,22 +123,29 @@ const App: React.FC = () => {
   };
 
   const handleGenerateVideoPrompt = useCallback(async () => {
-    if (loadingState !== 'none' || !mainIdea.trim() || !apiKey) return;
+    if (loadingState !== 'none' || !apiKey) return;
 
     setLoadingState('video');
     setError(null);
     setGeneratedPrompt('');
 
     try {
-      const textInput = { mainIdea, setting, style: videoStyle, characters: sceneCharacters };
-      const prompt = await generateVeoPromptFromText(textInput, apiKey);
+      let prompt = '';
+      if (videoInputMode === 'structured') {
+        if (!mainIdea.trim()) return;
+        const textInput = { mainIdea, setting, style: videoStyle, characters: sceneCharacters };
+        prompt = await generateVeoPromptFromText(textInput, apiKey);
+      } else { // freestyle
+        if (!freestyleInput.trim()) return;
+        prompt = await generateVeoPromptFromFreestyle(freestyleInput, apiKey);
+      }
       setGeneratedPrompt(prompt);
     } catch (err) {
       handleApiError(err);
     } finally {
       setLoadingState('none');
     }
-  }, [mainIdea, setting, videoStyle, sceneCharacters, loadingState, apiKey]);
+  }, [apiKey, loadingState, videoInputMode, mainIdea, setting, videoStyle, sceneCharacters, freestyleInput]);
 
   const handleGenerateVideoPromptFromImage = useCallback(async () => {
     if (loadingState !== 'none' || !uploadedImage || !apiKey) return;
@@ -239,6 +250,12 @@ const App: React.FC = () => {
                 loadingState={loadingState}
                 uploadedImage={uploadedImage}
                 onUploadedImageChange={setUploadedImage}
+                
+                // Freestyle video props
+                videoInputMode={videoInputMode}
+                onVideoInputModeChange={setVideoInputMode}
+                freestyleInput={freestyleInput}
+                onFreestyleInputChange={(e) => setFreestyleInput(e.target.value)}
                 
                 // Image Prompt props
                 onGenerateImage={handleGenerateImagePrompt}

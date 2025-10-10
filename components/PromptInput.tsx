@@ -8,6 +8,7 @@ export interface SceneCharacter extends ProjectCharacter {
 
 type LoadingState = 'none' | 'video' | 'image';
 export type ActiveTab = 'video' | 'imageToVideo' | 'image';
+export type VideoInputMode = 'structured' | 'freestyle';
 
 const VIDEO_VISUAL_STYLES = [
   {
@@ -39,6 +40,10 @@ interface PromptInputProps {
   loadingState: LoadingState;
   
   // Video (Text-to-Video) Props
+  videoInputMode: VideoInputMode;
+  onVideoInputModeChange: (mode: VideoInputMode) => void;
+  freestyleInput: string;
+  onFreestyleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   mainIdea: string;
   onMainIdeaChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   setting: string;
@@ -175,7 +180,8 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
           apiKey, onGenerateVideo, onGenerateVideoFromImage, loadingState,
           uploadedImage, onUploadedImageChange, 
           onGenerateImage, imageIdea, onImageIdeaChange, imageStyle, onImageStyleToggle,
-          imageAspectRatio, onImageAspectRatioChange, imageSceneCharacters, onImageSceneCharactersChange
+          imageAspectRatio, onImageAspectRatioChange, imageSceneCharacters, onImageSceneCharactersChange,
+          videoInputMode, onVideoInputModeChange, freestyleInput, onFreestyleInputChange
         } = props;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -201,46 +207,88 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
   const commonInputClasses = "w-full p-2.5 bg-white/5 border border-white/10 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white/10 transition-all text-gray-200 placeholder-gray-500";
   const primaryButtonClasses = "w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-lg shadow-lg shadow-indigo-600/20 hover:from-purple-500 hover:to-indigo-500 disabled:from-gray-700 disabled:to-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] disabled:transform-none disabled:shadow-none";
 
-  const renderVideoForm = () => (
-    <div className="space-y-5">
-      {/* 1. Main Idea */}
-      <div>
-        <label htmlFor="video-idea" className="block text-sm font-medium text-gray-300 mb-1.5">1. Ý tưởng chính (*)</label>
-        <input id="video-idea" type="text" value={mainIdea} onChange={onMainIdeaChange} placeholder="ví dụ: hai cô giáo đang nói chuyện với nhau" className={commonInputClasses} disabled={isLoading}/>
-      </div>
-      {/* 2. Setting */}
-      <div>
-        <label htmlFor="video-setting" className="block text-sm font-medium text-gray-300 mb-1.5">2. Bối cảnh</label>
-        <input id="video-setting" type="text" value={setting} onChange={onSettingChange} placeholder="ví dụ: trong một lớp học, sân trường..." className={commonInputClasses} disabled={isLoading}/>
-      </div>
-      {/* 3. Video Style */}
-      <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">3. Phong cách video</label>
-        {VIDEO_VISUAL_STYLES.map(category => (
-          <div key={category.category} className="flex flex-wrap gap-2">
-            {category.styles.map(styleItem => (
-              <div key={styleItem.name} className="relative group">
-                <button onClick={() => onVideoStyleToggle(styleItem.name)} disabled={isLoading} className={`px-4 py-1.5 text-sm rounded-full transition-all duration-200 font-medium border ${videoStyle.includes(styleItem.name) ? 'bg-indigo-500/80 text-white border-indigo-400' : 'bg-white/5 text-gray-300 hover:bg-white/10 border-transparent'}`}>
-                  {styleItem.name}
-                </button>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs p-2 text-xs text-white bg-gray-900 border border-gray-600 rounded-md shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none z-10">{styleItem.description}</div>
-              </div>
-            ))}
+  const renderVideoForm = () => {
+    const isStructured = videoInputMode === 'structured';
+    const isFreestyle = videoInputMode === 'freestyle';
+
+    return (
+      <div className="space-y-5">
+        <div className="flex bg-black/20 p-1 rounded-lg border border-white/10 w-full max-w-sm mx-auto">
+          <button 
+            onClick={() => onVideoInputModeChange('structured')} 
+            className={`flex-1 p-2 text-sm font-semibold rounded-md transition-colors ${isStructured ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}
+          >
+            Soạn theo cấu trúc
+          </button>
+          <button 
+            onClick={() => onVideoInputModeChange('freestyle')} 
+            className={`flex-1 p-2 text-sm font-semibold rounded-md transition-colors ${isFreestyle ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}
+          >
+            Soạn tự do
+          </button>
+        </div>
+
+        {isStructured && (
+          <div className="space-y-5 animate-fade-in">
+            {/* 1. Main Idea */}
+            <div>
+              <label htmlFor="video-idea" className="block text-sm font-medium text-gray-300 mb-1.5">1. Ý tưởng chính (*)</label>
+              <input id="video-idea" type="text" value={mainIdea} onChange={onMainIdeaChange} placeholder="ví dụ: hai cô giáo đang nói chuyện với nhau" className={commonInputClasses} disabled={isLoading}/>
+            </div>
+            {/* 2. Setting */}
+            <div>
+              <label htmlFor="video-setting" className="block text-sm font-medium text-gray-300 mb-1.5">2. Bối cảnh</label>
+              <input id="video-setting" type="text" value={setting} onChange={onSettingChange} placeholder="ví dụ: trong một lớp học, sân trường..." className={commonInputClasses} disabled={isLoading}/>
+            </div>
+            {/* 3. Video Style */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">3. Phong cách video</label>
+              {VIDEO_VISUAL_STYLES.map(category => (
+                <div key={category.category} className="flex flex-wrap gap-2">
+                  {category.styles.map(styleItem => (
+                    <div key={styleItem.name} className="relative group">
+                      <button onClick={() => onVideoStyleToggle(styleItem.name)} disabled={isLoading} className={`px-4 py-1.5 text-sm rounded-full transition-all duration-200 font-medium border ${videoStyle.includes(styleItem.name) ? 'bg-indigo-500/80 text-white border-indigo-400' : 'bg-white/5 text-gray-300 hover:bg-white/10 border-transparent'}`}>
+                        {styleItem.name}
+                      </button>
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs p-2 text-xs text-white bg-gray-900 border border-gray-600 rounded-md shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none z-10">{styleItem.description}</div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            {/* 4. Characters */}
+            <CharacterSelector {...props} isForVideo={true} label="4. Nhân vật & Lời thoại" />
           </div>
-        ))}
+        )}
+
+        {isFreestyle && (
+          <div className="space-y-5 animate-fade-in">
+            <div>
+              <label htmlFor="freestyle-input" className="block text-sm font-medium text-gray-300 mb-1.5">Nội dung kịch bản hoặc ý tưởng (*)</label>
+              <textarea
+                id="freestyle-input"
+                value={freestyleInput}
+                onChange={onFreestyleInputChange}
+                placeholder="Nhập ý tưởng, mô tả cảnh, hoặc lời thoại tại đây. AI sẽ tự động chuyển thành prompt hoàn chỉnh..."
+                rows={8}
+                className={`${commonInputClasses} resize-y`}
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Submit Button */}
+        <div className="pt-4">
+          <button onClick={onGenerateVideo} disabled={isLoading || (isStructured && !mainIdea.trim()) || (isFreestyle && !freestyleInput.trim()) || !apiKey} className={primaryButtonClasses}>
+            {loadingState === 'video' ? <><LoadingSpinnerIcon className="w-5 h-5 animate-spin" />Đang tạo...</> : 
+              <><FilmIcon className="w-5 h-5" />Tạo Prompt Video</>}
+          </button>
+          {!apiKey && <p className="text-xs text-center text-yellow-500 mt-3">Vui lòng cung cấp API Key để sử dụng chức năng này.</p>}
+        </div>
       </div>
-      {/* 4. Characters */}
-      <CharacterSelector {...props} isForVideo={true} label="4. Nhân vật & Lời thoại" />
-      {/* Submit Button */}
-      <div className="pt-4">
-        <button onClick={onGenerateVideo} disabled={isLoading || !mainIdea.trim() || !apiKey} className={primaryButtonClasses}>
-          {loadingState === 'video' ? <><LoadingSpinnerIcon className="w-5 h-5 animate-spin" />Đang tạo...</> : 
-            <><FilmIcon className="w-5 h-5" />Tạo Prompt Video</>}
-        </button>
-        {!apiKey && <p className="text-xs text-center text-yellow-500 mt-3">Vui lòng cung cấp API Key để sử dụng chức năng này.</p>}
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderImageToVideoForm = () => (
     <div className="space-y-5">

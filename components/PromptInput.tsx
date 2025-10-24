@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { LoadingSpinnerIcon, XIcon, UsersIcon, FilmIcon, ImageIcon, UploadIcon } from './icons';
+import { LoadingSpinnerIcon, XIcon, UsersIcon, FilmIcon, ImageIcon, UploadIcon, HelpCircleIcon, PlusIcon } from './icons';
 import { ProjectCharacter } from './CharacterManager';
 
 export interface SceneCharacter extends ProjectCharacter {
@@ -7,7 +7,7 @@ export interface SceneCharacter extends ProjectCharacter {
 }
 
 type LoadingState = 'none' | 'video' | 'image';
-export type ActiveTab = 'video' | 'imageToVideo' | 'image';
+export type ActiveTab = 'video' | 'imageToVideo' | 'image' | 'guide';
 export type VideoInputMode = 'structured' | 'freestyle';
 
 const VIDEO_VISUAL_STYLES = [
@@ -58,6 +58,9 @@ interface PromptInputProps {
   onGenerateVideoFromImage: () => void;
   uploadedImage: { mimeType: string; data: string } | null;
   onUploadedImageChange: (image: { mimeType: string; data: string } | null) => void;
+  isGeneratingDialogue: boolean;
+  imageToVideoDialogues: {id: number, dialogue: string}[];
+  onImageToVideoDialoguesChange: React.Dispatch<React.SetStateAction<{id: number, dialogue: string}[]>>;
   
   // Image Prompt Props
   onGenerateImage: () => void;
@@ -178,14 +181,14 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
           videoStyle, onVideoStyleToggle,
           sceneCharacters, onSceneCharactersChange, onManageCharactersClick,
           apiKey, onGenerateVideo, onGenerateVideoFromImage, loadingState,
-          uploadedImage, onUploadedImageChange, 
+          uploadedImage, onUploadedImageChange, isGeneratingDialogue, imageToVideoDialogues, onImageToVideoDialoguesChange,
           onGenerateImage, imageIdea, onImageIdeaChange, imageStyle, onImageStyleToggle,
           imageAspectRatio, onImageAspectRatioChange, imageSceneCharacters, onImageSceneCharactersChange,
           videoInputMode, onVideoInputModeChange, freestyleInput, onFreestyleInputChange
         } = props;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isLoading = loadingState !== 'none';
+  const isLoading = loadingState !== 'none' || isGeneratingDialogue;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -202,6 +205,20 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
     } else {
       onUploadedImageChange(null);
     }
+  };
+
+  const handleAddDialogue = () => {
+    onImageToVideoDialoguesChange(prev => [...prev, { id: Date.now(), dialogue: '' }]);
+  };
+  
+  const handleRemoveDialogue = (id: number) => {
+    onImageToVideoDialoguesChange(prev => prev.filter(item => item.id !== id));
+  };
+  
+  const handleDialogueTextChange = (id: number, text: string) => {
+    onImageToVideoDialoguesChange(prev => 
+      prev.map(item => item.id === id ? { ...item, dialogue: text } : item)
+    );
   };
 
   const commonInputClasses = "w-full p-2.5 bg-white/5 border border-white/10 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white/10 transition-all text-gray-200 placeholder-gray-500";
@@ -337,6 +354,54 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
             <label htmlFor="image-to-video-idea" className="block text-sm font-medium text-gray-300 mb-1.5">2. Ý tưởng bổ sung (tùy chọn)</label>
             <textarea id="image-to-video-idea" value={mainIdea} onChange={onMainIdeaChange} placeholder={`Gợi ý: 'làm cho nhân vật di chuyển', 'thêm hiệu ứng tuyết rơi', hoặc thêm lời thoại tiếng Việt như: Người đàn ông nói: "Chúng ta đi thôi."`} rows={3} className={`${commonInputClasses} resize-none`} disabled={isLoading}/>
         </div>
+        
+        {/* 3. Dialogue Section */}
+        {uploadedImage && (
+          <div className="animate-fade-in">
+            <label className="block text-sm font-medium text-gray-300 mb-2">3. Lời thoại (AI gợi ý)</label>
+            <div className="p-3 bg-black/20 border border-white/10 rounded-lg space-y-3">
+              {isGeneratingDialogue && (
+                  <div className="flex items-center justify-center gap-3 text-gray-400 p-4">
+                      <LoadingSpinnerIcon className="w-5 h-5 animate-spin" />
+                      <span>Đang phân tích ảnh và tạo lời thoại...</span>
+                  </div>
+              )}
+              {!isGeneratingDialogue && imageToVideoDialogues.map((item, index) => (
+                <div key={item.id} className="flex items-start gap-2">
+                  <div className="flex-grow">
+                    <label className="text-xs text-gray-400 font-medium mb-1 block">{`Lời thoại nhân vật ${index + 1}`}</label>
+                    <textarea
+                      placeholder={`Nhập lời thoại...`}
+                      value={item.dialogue}
+                      onChange={(e) => handleDialogueTextChange(item.id, e.target.value)}
+                      disabled={isLoading}
+                      rows={2}
+                      className="w-full p-2 text-sm bg-black/20 border border-white/10 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-none text-gray-200 placeholder-gray-500"
+                    />
+                  </div>
+                  <button 
+                    onClick={() => handleRemoveDialogue(item.id)} 
+                    className="p-2 text-gray-500 hover:text-red-400 mt-6"
+                    title="Xóa lời thoại"
+                  >
+                    <XIcon className="w-4 h-4"/>
+                  </button>
+                </div>
+              ))}
+              {!isGeneratingDialogue && (
+                 <button 
+                    onClick={handleAddDialogue}
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-2 text-sm font-semibold p-2 bg-white/5 text-indigo-400 hover:bg-white/10 hover:text-indigo-300 rounded-md transition-colors disabled:opacity-50"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    Thêm lời thoại
+                  </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Submit Button */}
         <div className="pt-4">
             <button onClick={onGenerateVideoFromImage} disabled={isLoading || !uploadedImage || !apiKey} className={primaryButtonClasses}>
@@ -427,24 +492,114 @@ export const PromptInput: React.FC<PromptInputProps> = (props) => {
       </div>
     </div>
   );
+  
+  const renderGuide = () => (
+    <div className="space-y-6 text-gray-300 leading-relaxed animate-fade-in p-2 sm:p-0">
+      <h2 className="text-2xl font-bold text-white text-center">Hướng dẫn & Công cụ</h2>
+      <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+        <div className="p-4 bg-black/20 border border-white/10 rounded-lg">
+          <h3 className="font-semibold text-lg text-gray-100 mb-2">Sử dụng VEO 3</h3>
+          <p className="text-sm mb-3">Tạo video từ prompt bạn đã tạo.</p>
+          <a 
+            href="https://labs.google/fx/tools/flow" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="inline-block px-5 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-500 transition-colors"
+          >
+            Truy cập VEO 3
+          </a>
+        </div>
+
+        <div className="p-4 bg-black/20 border border-white/10 rounded-lg">
+          <h3 className="font-semibold text-lg text-gray-100 mb-2">Hướng dẫn đăng nhập VEO 3</h3>
+          <p className="text-sm mb-3">Xem tài liệu chi tiết về cách đăng nhập và bắt đầu với VEO 3.</p>
+          <a 
+            href="https://docs.google.com/document/d/1obHQB1nFtuWLwkz2SeibKyfnjNnKG9Dx/edit?usp=sharing&ouid=112798182608207183162&rtpof=true&sd=true" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="inline-block px-5 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-500 transition-colors"
+          >
+            Xem Hướng dẫn
+          </a>
+        </div>
+
+        <div className="p-4 bg-black/20 border border-white/10 rounded-lg">
+          <h3 className="font-semibold text-lg text-gray-100 mb-2">Tạo ảnh AI (Dreamina)</h3>
+          <p className="text-sm mb-3">Sử dụng công cụ từ CapCut để tạo ảnh nền hoặc nhân vật.</p>
+          <a 
+            href="https://dreamina.capcut.com/ai-tool/generate/?type=image" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="inline-block px-5 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-500 transition-colors"
+          >
+            Tạo ảnh với Dreamina
+          </a>
+        </div>
+         <div className="p-4 bg-black/20 border border-white/10 rounded-lg">
+          <h3 className="font-semibold text-lg text-gray-100 mb-2">Chuyển văn bản thành giọng nói</h3>
+          <p className="text-sm mb-3">Sử dụng Google AI Studio để tạo giọng nói từ văn bản.</p>
+          <a 
+            href="https://aistudio.google.com/" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="inline-block px-5 py-2 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-500 transition-colors"
+          >
+            Mở AI Studio
+          </a>
+        </div>
+        <div className="p-4 bg-black/20 border border-white/10 rounded-lg md:col-span-2">
+          <h3 className="font-semibold text-lg text-gray-100 mb-2">Lấy API Key (Google AI)</h3>
+          <p className="text-sm mb-3">Tạo và quản lý API Key của bạn tại Google AI Studio để sử dụng ứng dụng này.</p>
+          <a 
+            href="https://aistudio.google.com/app/apikey" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="inline-block px-5 py-2 text-sm font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
+          >
+            Lấy API Key
+          </a>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <>
       <div className="flex border-b border-white/10 px-1 sm:px-4 pt-2">
         <TabButton onClick={() => onTabChange('video')} isActive={activeTab === 'video'} icon={<FilmIcon className="w-5 h-5"/>}>
-          <span className="hidden sm:inline">Prompt </span>Video (Ý tưởng)
+          <span className="sm:hidden">Video (Ý tưởng)</span>
+          <div className="hidden sm:flex sm:flex-col sm:items-start leading-tight">
+            <span className="font-normal opacity-90">Prompt</span>
+            <span>Video (Ý tưởng)</span>
+          </div>
         </TabButton>
         <TabButton onClick={() => onTabChange('imageToVideo')} isActive={activeTab === 'imageToVideo'} icon={<UploadIcon className="w-5 h-5"/>}>
-          <span className="hidden sm:inline">Prompt </span>Video (Từ ảnh)
+          <span className="sm:hidden">Video (Từ ảnh)</span>
+          <div className="hidden sm:flex sm:flex-col sm:items-start leading-tight">
+            <span className="font-normal opacity-90">Prompt</span>
+            <span>Video (Từ ảnh)</span>
+          </div>
         </TabButton>
          <TabButton onClick={() => onTabChange('image')} isActive={activeTab === 'image'} icon={<ImageIcon className="w-5 h-5"/>}>
-          <span className="hidden sm:inline">Prompt </span>Ảnh
+          <span className="sm:hidden">Ảnh</span>
+          <div className="hidden sm:flex sm:flex-col sm:items-start leading-tight">
+              <span className="font-normal opacity-90">Prompt</span>
+              <span>Ảnh</span>
+          </div>
+        </TabButton>
+        <TabButton onClick={() => onTabChange('guide')} isActive={activeTab === 'guide'} icon={<HelpCircleIcon className="w-5 h-5"/>}>
+            <span className="sm:hidden">Hướng dẫn</span>
+            <div className="hidden sm:flex sm:flex-col sm:items-start leading-tight">
+                <span className="font-normal opacity-90">Tài nguyên</span>
+                <span>Hướng dẫn</span>
+            </div>
         </TabButton>
       </div>
       <div className="p-4 sm:p-8">
         {activeTab === 'video' && renderVideoForm()}
         {activeTab === 'imageToVideo' && renderImageToVideoForm()}
         {activeTab === 'image' && renderImageForm()}
+        {activeTab === 'guide' && renderGuide()}
       </div>
     </>
   );

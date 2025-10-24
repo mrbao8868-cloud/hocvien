@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { PromptInput, SceneCharacter, ActiveTab, VideoInputMode } from './components/PromptInput';
 import { PromptOutput } from './components/PromptOutput';
-import { generateVeoPromptFromText, generateVeoPromptFromImage, generateImagePrompt, analyzeCharacterFromImage, generateVeoPromptFromFreestyle } from './services/geminiService';
+import { generateVeoPromptFromText, generateVeoPromptFromImage, generateImagePrompt, analyzeCharacterFromImage, generateVeoPromptFromFreestyle, generateDialoguesFromImage } from './services/geminiService';
 import { ErrorDisplay } from './components/ErrorDisplay';
 import { Footer } from './components/Footer';
 import { CharacterManager, ProjectCharacter } from './components/CharacterManager';
@@ -27,6 +27,7 @@ const App: React.FC = () => {
 
   // Video Prompt (from image) state
   const [uploadedImage, setUploadedImage] = useState<{ mimeType: string; data: string } | null>(null);
+  const [imageToVideoDialogues, setImageToVideoDialogues] = useState<{id: number, dialogue: string}[]>([]);
 
   // Image Prompt state
   const [imageIdea, setImageIdea] = useState<string>('');
@@ -43,6 +44,7 @@ const App: React.FC = () => {
   const [projectCharacters, setProjectCharacters] = useState<ProjectCharacter[]>([]);
   const [isCharacterManagerOpen, setIsCharacterManagerOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [isGeneratingDialogue, setIsGeneratingDialogue] = useState<boolean>(false);
   
   // Load API key from localStorage on initial render
   useEffect(() => {
@@ -155,14 +157,14 @@ const App: React.FC = () => {
     setGeneratedPrompt('');
 
     try {
-      const prompt = await generateVeoPromptFromImage(mainIdea, uploadedImage, apiKey);
+      const prompt = await generateVeoPromptFromImage(mainIdea, uploadedImage, imageToVideoDialogues, apiKey);
       setGeneratedPrompt(prompt);
     } catch (err) {
       handleApiError(err);
     } finally {
       setLoadingState('none');
     }
-  }, [mainIdea, uploadedImage, loadingState, apiKey]);
+  }, [mainIdea, uploadedImage, imageToVideoDialogues, loadingState, apiKey]);
 
   const handleGenerateImagePrompt = useCallback(async () => {
     if (loadingState !== 'none' || !imageIdea.trim() || !apiKey) return;
@@ -212,6 +214,42 @@ const App: React.FC = () => {
     setIsApiKeyModalOpen(false);
   };
 
+  const handleUploadedImageChange = async (image: { mimeType: string; data: string } | null) => {
+    setUploadedImage(image);
+    // Clear previous dialogues immediately for better UX
+    setImageToVideoDialogues([]);
+
+    if (!image) {
+        return;
+    }
+    
+    if (!apiKey) {
+        setError("Vui lòng cung cấp API Key để sử dụng chức năng này.");
+        return;
+    }
+
+    setIsGeneratingDialogue(true);
+    setError(null);
+
+    try {
+        const dialogues = await generateDialoguesFromImage(image, apiKey);
+        if (dialogues.length > 0) {
+             const dialogueObjects = dialogues.map((d, index) => ({ id: Date.now() + index, dialogue: d }));
+             setImageToVideoDialogues(dialogueObjects);
+        } else {
+            // If no dialogues are returned, add one empty box for the user to start
+            setImageToVideoDialogues([{ id: Date.now(), dialogue: '' }]);
+        }
+    } catch (err) {
+        handleApiError(err);
+        setError("Không thể tự động tạo lời thoại. Vui lòng nhập thủ công.");
+        // Add an empty dialogue box on error so user can still type
+        setImageToVideoDialogues([{ id: Date.now(), dialogue: '' }]);
+    } finally {
+        setIsGeneratingDialogue(false);
+    }
+  };
+
   return (
     <>
       <div className="min-h-screen bg-black text-gray-200 font-sans flex flex-col">
@@ -232,6 +270,7 @@ const App: React.FC = () => {
                   setError(null);
                   if (tab !== 'imageToVideo') {
                     setUploadedImage(null);
+                    setImageToVideoDialogues([]);
                   }
                 }}
                 mainIdea={mainIdea}
@@ -249,7 +288,10 @@ const App: React.FC = () => {
                 onGenerateVideoFromImage={handleGenerateVideoPromptFromImage}
                 loadingState={loadingState}
                 uploadedImage={uploadedImage}
-                onUploadedImageChange={setUploadedImage}
+                onUploadedImageChange={handleUploadedImageChange}
+                isGeneratingDialogue={isGeneratingDialogue}
+                imageToVideoDialogues={imageToVideoDialogues}
+                onImageToVideoDialoguesChange={setImageToVideoDialogues}
                 
                 // Freestyle video props
                 videoInputMode={videoInputMode}

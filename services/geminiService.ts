@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 let ai: GoogleGenAI | null = null;
 let currentApiKey: string | null = null;
@@ -84,12 +84,13 @@ export async function generateVeoPromptFromText(input: VeoTextInput, apiKey: str
 
 **YÊU CẦU QUAN TRỌNG:**
 1.  **Ngôn ngữ:** Toàn bộ prompt mô tả cảnh, hành động, và máy quay phải bằng **tiếng Anh**. Tuy nhiên, nếu người dùng cung cấp **lời thoại**, bạn PHẢI giữ nguyên lời thoại đó bằng **tiếng Việt** và lồng ghép nó một cách tự nhiên vào trong prompt.
-2.  **Chất lượng điện ảnh:** Đừng chỉ liệt kê thông tin. Hãy dệt chúng thành một kịch bản cảnh quay sống động.
+2.  **Xử lý hội thoại:** Nếu nhiều nhân vật có lời thoại, hãy coi đó là một cuộc hội thoại tuần tự. Sắp xếp các lời thoại để tạo thành một cuộc trò chuyện tự nhiên. Mô tả hành động và biểu cảm của các nhân vật khi họ nói và lắng nghe. Đừng để một nhân vật nói nhiều câu thoại liên tiếp nếu có nhân vật khác cũng có lời thoại.
+3.  **Chất lượng điện ảnh:** Đừng chỉ liệt kê thông tin. Hãy dệt chúng thành một kịch bản cảnh quay sống động.
     - **Mô tả chi tiết:** Thêm các chi tiết tinh tế về môi trường (cơn gió nhẹ làm rèm cửa bay, lá cây lay động, tiếng đồng hồ tích tắc, tiếng cười từ xa).
     - **Ánh sáng & không khí:** Mô tả ánh sáng (ánh nắng ấm áp buổi chiều) và không khí chung của cảnh (hoài niệm, chân thành).
     - **Kỹ thuật quay phim:** Đề xuất các chuyển động và góc máy cụ thể (góc máy thấp, lia máy chậm - dolly-in, cảnh quay từ trên cao).
     - **Cảm xúc & hành động nhân vật:** Mô tả biểu cảm, giọng điệu, và những cử chỉ nhỏ của nhân vật (ánh mắt trầm ngâm, nụ cười đầy hy vọng, cái nhìn ấm áp).
-3.  **Định dạng:** Chỉ trả về một đoạn văn duy nhất, mạch lạc. KHÔNG sử dụng markdown.
+4.  **Định dạng:** Chỉ trả về một đoạn văn duy nhất, mạch lạc. KHÔNG sử dụng markdown.
 
 **VÍ DỤ VỀ PROMPT CHUẨN:**
 Dựa trên ý tưởng "hai giáo viên nói chuyện trong phòng nghỉ", prompt đầu ra nên có dạng như sau:
@@ -144,20 +145,28 @@ A warm afternoon sunlight streams through the window of a teacher's lounge. The 
 export async function generateVeoPromptFromImage(
   idea: string,
   image: { mimeType: string; data: string },
+  dialogues: { id: number, dialogue: string }[],
   apiKey: string
 ): Promise<string> {
-  const systemInstruction = `Bạn là một chuyên gia sáng tạo prompt cho các mô hình AI tạo video như Google Veo. Nhiệm vụ của bạn là phân tích một hình ảnh và một ý tưởng tùy chọn từ người dùng để tạo ra một prompt video chi tiết, sống động.
+  const systemInstruction = `Bạn là một chuyên gia sáng tạo prompt cho các mô hình AI tạo video như Google Veo. Nhiệm vụ của bạn là phân tích một hình ảnh, một ý tưởng bổ sung, và một danh sách lời thoại (nếu có) để tạo ra một prompt video chi tiết, sống động bằng tiếng Anh.
 
 **YÊU CẦU QUAN TRỌNG:**
-1.  **Ngôn ngữ:** Toàn bộ prompt mô tả cảnh, hành động, và máy quay phải bằng **tiếng Anh**. Tuy nhiên, nếu ý tưởng bổ sung của người dùng có chứa **lời thoại** (thường trong dấu ngoặc kép), bạn PHẢI giữ nguyên lời thoại đó bằng **tiếng Việt** và lồng ghép nó một cách tự nhiên vào trong prompt.
-2.  **Phân tích hình ảnh:** Xác định chủ thể chính, bối cảnh, phong cách nghệ thuật, ánh sáng và bố cục của hình ảnh.
-3.  **Kết hợp ý tưởng:** Tích hợp ý tưởng bổ sung một cách sáng tạo vào prompt. Ví dụ: nếu hình ảnh là một khu rừng và ý tưởng là "thêm một con rồng", hãy mô tả con rồng trong khu rừng đó. Nếu không có ý tưởng, hãy tạo một hành động hoặc câu chuyện dựa trên hình ảnh.
-4.  **Xây dựng Prompt:** Tạo một prompt hoàn chỉnh, kết hợp các yếu tố như:
-    - **Chủ thể & Hành động:** Mô tả chi tiết chủ thể từ ảnh và hành động được đề xuất.
-    - **Môi trường:** Dựa trên bối cảnh của ảnh.
-    - **Phong cách hình ảnh:** Dựa trên phong cách của ảnh, nhưng có thể nhấn mạnh thêm (ví dụ: "cinematic, photorealistic, 8K").
-    - **Máy quay & Cảnh quay:** Đề xuất các chuyển động máy quay động (ví dụ: "a slow panning shot revealing...", "an epic aerial drone shot").
-    - **Ánh sáng:** Mô tả ánh sáng trong ảnh.
+1.  **Ngôn ngữ:** Toàn bộ prompt mô tả cảnh, hành động, và máy quay phải bằng **tiếng Anh**. Tuy nhiên, nếu người dùng cung cấp **lời thoại**, bạn PHẢI giữ nguyên lời thoại đó bằng **tiếng Việt**.
+2.  **Phân tích hình ảnh:** Xác định các chủ thể chính, bối cảnh, phong cách nghệ thuật, ánh sáng và bố cục của hình ảnh để tái tạo lại chúng trong video.
+3.  **Xử lý hội thoại tuần tự (QUAN TRỌNG NHẤT):**
+    -   Người dùng đã cung cấp một danh sách lời thoại theo **thứ tự nghiêm ngặt**. Đây là một cuộc hội thoại.
+    -   **TUYỆT ĐỐI KHÔNG** để một nhân vật nói tất cả các lời thoại.
+    -   Phân tích hình ảnh để xác định các nhân vật (ví dụ: người đàn ông, người phụ nữ).
+    -   Gán lời thoại ĐẦU TIÊN cho nhân vật thứ nhất.
+    -   Gán lời thoại THỨ HAI cho nhân vật thứ hai.
+    -   Gán lời thoại THỨ BA cho nhân vật thứ nhất (hoặc thứ ba nếu có).
+    -   Tiếp tục tuần tự như vậy. Mỗi câu thoại nên được nói bởi một nhân vật khác nhau để tạo thành một cuộc đối thoại qua lại. Mô tả hành động và biểu cảm của họ khi nói.
+4.  **Kết hợp ý tưởng:** Tích hợp ý tưởng bổ sung (nếu có) một cách sáng tạo vào prompt. Nếu không có, hãy tạo một hành động hoặc câu chuyện dựa trên hình ảnh và lời thoại.
+5.  **Xây dựng Prompt:** Tạo một prompt hoàn chỉnh, kết hợp các yếu tố như:
+    -   **Chủ thể & Hành động:** Mô tả chi tiết chủ thể từ ảnh và hành động được đề xuất, bao gồm cả hành động nói lời thoại.
+    -   **Môi trường:** Dựa trên bối cảnh của ảnh.
+    -   **Phong cách hình ảnh:** Dựa trên phong cách của ảnh, nhưng có thể nhấn mạnh thêm (ví dụ: "cinematic, photorealistic, 8K").
+    -   **Máy quay & Cảnh quay:** Đề xuất các chuyển động máy quay động (ví dụ: "a slow panning shot revealing...", "an epic aerial drone shot").
 
 KHÔNG sử dụng markdown. Chỉ trả về một đoạn văn tiếng Anh duy nhất.`;
 
@@ -167,8 +176,22 @@ KHÔNG sử dụng markdown. Chỉ trả về một đoạn văn tiếng Anh duy
       data: image.data,
     },
   };
+  
+  let textContent = `Ý tưởng bổ sung của người dùng: "${idea || 'Hãy tạo một câu chuyện hoặc hành động thú vị dựa trên hình ảnh này.'}"`;
+
+  if (dialogues && dialogues.length > 0) {
+    const dialoguesString = dialogues
+      .filter(d => d.dialogue.trim() !== '')
+      .map((d, index) => `Lời thoại ${index + 1}: "${d.dialogue.trim()}"`)
+      .join('\n');
+    
+    if (dialoguesString) {
+      textContent += `\n\nDanh sách lời thoại theo thứ tự: \n${dialoguesString}`;
+    }
+  }
+
   const textPart = {
-    text: `Ý tưởng bổ sung của người dùng: "${idea || 'Hãy tạo một câu chuyện hoặc hành động thú vị dựa trên hình ảnh này.'}"`
+    text: textContent
   };
 
   const contents = { parts: [imagePart, textPart] };
@@ -238,6 +261,67 @@ export async function generateImagePrompt(input: ImageTextInput, apiKey: string)
       return `${prompt.replace(/,$/, '')} ${aspectRatioParam}`;
     }
     return prompt;
+}
+
+export async function generateDialoguesFromImage(
+  image: { mimeType: string; data: string },
+  apiKey: string
+): Promise<string[]> {
+  const systemInstruction = `Bạn là một nhà biên kịch sáng tạo. Nhiệm vụ của bạn là phân tích một hình ảnh, xác định các nhân vật, và viết một đoạn hội thoại ngắn, hợp lý giữa họ bằng tiếng Việt.
+Dựa trên biểu cảm, tư thế của nhân vật và bối cảnh chung, hãy tưởng tượng họ có thể đang nói gì với nhau.
+Cuộc trò chuyện phải tự nhiên và phù hợp với bối cảnh của hình ảnh.
+Chỉ trả về một đối tượng JSON chứa một khóa duy nhất là "dialogues", là một mảng các chuỗi. Mỗi chuỗi là một dòng thoại do một nhân vật nói theo trình tự.
+Ví dụ: { "dialogues": ["Chào cậu, lâu rồi không gặp!", "Chào cậu, dạo này cậu khỏe không?"] }`;
+
+  const ai = initializeGemini(apiKey);
+
+  const imagePart = {
+    inlineData: {
+      mimeType: image.mimeType,
+      data: image.data,
+    },
+  };
+  
+  const textPart = {
+    text: "Tạo lời thoại cho các nhân vật trong hình ảnh này."
+  };
+
+  const contents = { parts: [imagePart, textPart] };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents,
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            dialogues: {
+              type: Type.ARRAY,
+              description: 'Một mảng các chuỗi, mỗi chuỗi là một lời thoại.',
+              items: {
+                type: Type.STRING,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const jsonText = (response.text || '{}').trim();
+    const parsed = JSON.parse(jsonText);
+    
+    if (parsed && Array.isArray(parsed.dialogues)) {
+      return parsed.dialogues;
+    }
+    return [];
+
+  } catch (error) {
+    console.error("Gemini API call for dialogue generation failed:", error);
+    throw error;
+  }
 }
 
 export async function analyzeCharacterFromImage(
